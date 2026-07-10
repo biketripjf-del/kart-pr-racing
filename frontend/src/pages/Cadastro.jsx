@@ -75,7 +75,10 @@ export default function Cadastro() {
             <div className="font-semibold">{etapa.nome}</div>
             <div className="text-sm text-slate-400">
               {new Date(etapa.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
-              {etapa.kartodromo ? ` · ${etapa.kartodromo}` : ''} · {money(etapa.valor_centavos)} (2 baterias)
+              {etapa.kartodromo ? ` · ${etapa.kartodromo}` : ''} · 2 baterias
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              Inscrição gratuita aqui. O valor de {money(etapa.valor_centavos)} por etapa é acertado direto com a organização (Pix/dinheiro) — o site não cobra nada.
             </div>
           </div>
         </div>
