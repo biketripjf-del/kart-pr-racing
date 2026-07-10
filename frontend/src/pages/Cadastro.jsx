@@ -11,10 +11,16 @@ const EXPERIENCIA = [
   { v: 'frequente', l: 'Corro com frequência' },
 ];
 
+const CHAVE_INSCRITO = 'prcup_inscrito';
+
 export default function Cadastro() {
   const [etapa, setEtapa] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [pronto, setPronto] = useState(false);
+  const [novaInscricao, setNovaInscricao] = useState(false);
+  const [jaInscrito, setJaInscrito] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(CHAVE_INSCRITO) || 'null'); } catch { return null; }
+  });
   const [form, setForm] = useState({
     nome: '', apelido: '', whatsapp: '', data_nascimento: '', peso_kg: '',
     experiencia: '', empresa: '', indicado_por: '', consentimento: false,
@@ -41,6 +47,10 @@ export default function Cadastro() {
         data_nascimento: form.data_nascimento || null,
         etapa_id: etapa?.id || null,
       });
+      const info = { nome: form.nome.trim(), etapa: etapa?.nome || null };
+      try { localStorage.setItem(CHAVE_INSCRITO, JSON.stringify(info)); } catch { /* ignore */ }
+      setJaInscrito(info);
+      setNovaInscricao(false);
       setPronto(true);
     } catch (err) {
       toast.error(err.response?.data?.detalhe || 'Não deu pra enviar. Tenta de novo.');
@@ -49,18 +59,34 @@ export default function Cadastro() {
     }
   }
 
-  if (pronto) {
+  function outraPessoa() {
+    setForm({ nome: '', apelido: '', whatsapp: '', data_nascimento: '', peso_kg: '', experiencia: '', empresa: '', indicado_por: '', consentimento: false });
+    setNovaInscricao(true);
+    setPronto(false);
+  }
+
+  if (pronto || (jaInscrito && !novaInscricao)) {
+    const quem = jaInscrito?.nome ? `, ${jaInscrito.nome.split(' ')[0]}` : '';
+    const etapaNome = jaInscrito?.etapa || etapa?.nome;
     return (
       <Casca sub="Inscrição confirmada">
         <div className="card p-8 text-center">
           <CheckCircle2 className="mx-auto text-emerald-400" size={56} />
-          <h2 className="text-2xl font-bold mt-4">Você está dentro! 🏁</h2>
+          <h2 className="text-2xl font-bold mt-4">Você está dentro{quem}! 🏁</h2>
           <p className="text-slate-300 mt-2">
-            Inscrição confirmada{etapa ? ` para a ${etapa.nome}` : ''}. Nos vemos na pista.
+            Sua inscrição{etapaNome ? ` para a ${etapaNome}` : ''} está confirmada. Não precisa se inscrever de novo — nos vemos na pista.
           </p>
-          <Link to="/ranking" className="btn btn-ghost mt-6 inline-flex">
-            <Trophy size={18} /> Ver o ranking
-          </Link>
+          <p className="text-slate-500 text-sm mt-2">
+            O ranking do campeonato abre depois da primeira etapa.
+          </p>
+          <div className="flex flex-col gap-2 mt-6">
+            <Link to="/ranking" className="btn btn-ghost inline-flex justify-center">
+              <Trophy size={18} /> Ver o ranking
+            </Link>
+            <button onClick={outraPessoa} className="text-sm text-slate-400 hover:text-slate-200">
+              Inscrever outra pessoa
+            </button>
+          </div>
         </div>
       </Casca>
     );
