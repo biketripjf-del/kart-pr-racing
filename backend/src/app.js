@@ -12,6 +12,7 @@ import pilotosRoutes from './routes/pilotos.js';
 import etapasRoutes from './routes/etapas.js';
 import resultadosRoutes from './routes/resultados.js';
 import rankingRoutes from './routes/ranking.js';
+import { ensureSeed } from './bootstrap.js';
 
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -47,4 +48,6 @@ if (fs.existsSync(distDir)) {
 }
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`P&R Racing Cup no ar na porta ${PORT}`));
+ensureSeed().finally(() => {
+  app.listen(PORT, () => console.log(`P&R Racing Cup no ar na porta ${PORT}`));
+});
