@@ -1,0 +1,15 @@
+{
+  "name": "pr-racing-cup",
+  "version": "1.0.0",
+  "description": "P&R Racing Cup — app do campeonato de kart do escritório Pacheco & Reis Advogados",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix backend install && npm --prefix frontend install && npm --prefix frontend run build",
+    "migrate": "npm --prefix backend run migrate",
+    "seed": "npm --prefix backend run seed",
+    "start": "npm --prefix backend run migrate && npm --prefix backend start"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
