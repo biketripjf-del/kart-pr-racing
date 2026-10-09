@@ -51,6 +51,8 @@ código — tudo vem do ambiente.
 ## Testes
 ```bash
 cd backend && USE_PGMEM=1 JWT_SECRET=devkey PORT=4223 node test/smoke.mjs
+# banco fora do ar não pode derrubar o servidor (500 limpo + processo vivo)
+cd backend && JWT_SECRET=devkey node test/erro-de-banco.mjs
 ```
 Roda o fluxo completo (cadastro → pagamento → resultado → ranking) contra um
 Postgres em memória (pg-mem), sem precisar de banco.

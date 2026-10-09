@@ -2,11 +2,12 @@ import { Router } from 'express';
 import { q } from '../db.js';
 import { exigirAdmin } from '../auth.js';
 import { pontuarEtapa, msParaTempo } from '../scoring.js';
+import { ah } from '../async.js';
 
 const router = Router();
 
 // admin: salva/atualiza o resultado de um piloto na etapa (upsert)
-router.put('/:etapaId/:pilotoId', exigirAdmin, async (req, res) => {
+router.put('/:etapaId/:pilotoId', exigirAdmin, ah(async (req, res) => {
   const { posicao, melhor_volta_ms, num_voltas, pole, obs } = req.body || {};
   await q(
     `INSERT INTO resultados (etapa_id, piloto_id, posicao, melhor_volta_ms, num_voltas, pole, obs)
@@ -28,15 +29,15 @@ router.put('/:etapaId/:pilotoId', exigirAdmin, async (req, res) => {
     [req.params.etapaId, req.params.pilotoId]
   );
   res.json({ ok: true });
-});
+}));
 
-router.delete('/:etapaId/:pilotoId', exigirAdmin, async (req, res) => {
+router.delete('/:etapaId/:pilotoId', exigirAdmin, ah(async (req, res) => {
   await q('DELETE FROM resultados WHERE etapa_id = $1 AND piloto_id = $2', [req.params.etapaId, req.params.pilotoId]);
   res.json({ ok: true });
-});
+}));
 
 // pública: resultado completo de uma etapa (classificação + pontos + destaques)
-router.get('/etapa/:etapaId', async (req, res) => {
+router.get('/etapa/:etapaId', ah(async (req, res) => {
   const { rows: etapaRows } = await q('SELECT * FROM etapas WHERE id = $1', [req.params.etapaId]);
   if (!etapaRows[0]) return res.status(404).json({ erro: 'etapa_nao_encontrada' });
 
@@ -71,6 +72,6 @@ router.get('/etapa/:etapaId', async (req, res) => {
   });
 
   res.json({ etapa: etapaRows[0], classificacao });
-});
+}));
 
 export default router;

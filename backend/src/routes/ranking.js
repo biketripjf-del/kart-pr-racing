@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { q } from '../db.js';
 import { pontuarEtapa, rankingAnual } from '../scoring.js';
+import { ah } from '../async.js';
 
 const router = Router();
 
 // pública: ranking anual do campeonato
-router.get('/', async (req, res) => {
+router.get('/', ah(async (req, res) => {
   const ano = req.query.ano ? parseInt(req.query.ano, 10) : null;
 
   const { rows: etapas } = await q(
@@ -48,6 +49,6 @@ router.get('/', async (req, res) => {
   }));
 
   res.json({ etapas_realizadas: etapas, ranking: linhas });
-});
+}));
 
 export default router;
