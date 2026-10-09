@@ -3,6 +3,7 @@ import Joi from 'joi';
 import rateLimit from 'express-rate-limit';
 import { q } from '../db.js';
 import { exigirAdmin } from '../auth.js';
+import { ah } from '../async.js';
 
 const router = Router();
 
@@ -30,7 +31,7 @@ const schemaCadastro = Joi.object({
 });
 
 // Cadastro público de piloto
-router.post('/', limiteCadastro, async (req, res) => {
+router.post('/', limiteCadastro, ah(async (req, res) => {
   const { error, value } = schemaCadastro.validate(req.body || {}, { stripUnknown: true });
   if (error) return res.status(400).json({ erro: 'dados_invalidos', detalhe: error.message });
 
@@ -55,19 +56,19 @@ router.post('/', limiteCadastro, async (req, res) => {
     );
   }
   res.status(201).json({ ok: true, piloto });
-});
+}));
 
 // ---- admin ----
-router.get('/', exigirAdmin, async (req, res) => {
+router.get('/', exigirAdmin, ah(async (req, res) => {
   const { rows } = await q(
     `SELECT p.*,
        (SELECT COUNT(*) FROM resultados r WHERE r.piloto_id = p.id) AS etapas_correu
      FROM pilotos p WHERE p.ativo ORDER BY p.nome`
   );
   res.json(rows);
-});
+}));
 
-router.patch('/:id', exigirAdmin, async (req, res) => {
+router.patch('/:id', exigirAdmin, ah(async (req, res) => {
   const campos = ['nome', 'apelido', 'whatsapp', 'data_nascimento', 'peso_kg', 'experiencia', 'empresa', 'indicado_por', 'ativo'];
   const sets = [];
   const vals = [];
@@ -79,6 +80,6 @@ router.patch('/:id', exigirAdmin, async (req, res) => {
   const { rows } = await q(`UPDATE pilotos SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING *`, vals);
   if (!rows[0]) return res.status(404).json({ erro: 'nao_encontrado' });
   res.json(rows[0]);
-});
+}));
 
 export default router;

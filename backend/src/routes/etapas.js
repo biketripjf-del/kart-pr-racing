@@ -1,26 +1,27 @@
 import { Router } from 'express';
 import { q } from '../db.js';
 import { exigirAdmin } from '../auth.js';
+import { ah } from '../async.js';
 
 const router = Router();
 
 // pública: lista de etapas (pra tela de cadastro saber a próxima etapa)
-router.get('/', async (req, res) => {
+router.get('/', ah(async (req, res) => {
   const { rows } = await q('SELECT id, numero, nome, data, kartodromo, cidade, valor_centavos, status FROM etapas ORDER BY numero');
   res.json(rows);
-});
+}));
 
 // pública: próxima etapa agendada
-router.get('/proxima', async (req, res) => {
+router.get('/proxima', ah(async (req, res) => {
   const { rows } = await q(
     `SELECT id, numero, nome, data, kartodromo, cidade, valor_centavos
      FROM etapas WHERE status = 'agendada' ORDER BY data ASC LIMIT 1`
   );
   res.json(rows[0] || null);
-});
+}));
 
 // admin: criar etapa
-router.post('/', exigirAdmin, async (req, res) => {
+router.post('/', exigirAdmin, ah(async (req, res) => {
   const { numero, nome, data, kartodromo, cidade, valor_centavos } = req.body || {};
   if (!numero || !nome || !data) return res.status(400).json({ erro: 'faltam_campos' });
   const { rows } = await q(
@@ -29,9 +30,9 @@ router.post('/', exigirAdmin, async (req, res) => {
     [numero, nome, data, kartodromo || null, cidade || null, valor_centavos ?? null]
   );
   res.status(201).json(rows[0]);
-});
+}));
 
-router.patch('/:id', exigirAdmin, async (req, res) => {
+router.patch('/:id', exigirAdmin, ah(async (req, res) => {
   const campos = ['numero', 'nome', 'data', 'kartodromo', 'cidade', 'valor_centavos', 'status'];
   const sets = []; const vals = [];
   for (const c of campos) {
@@ -42,10 +43,10 @@ router.patch('/:id', exigirAdmin, async (req, res) => {
   const { rows } = await q(`UPDATE etapas SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING *`, vals);
   if (!rows[0]) return res.status(404).json({ erro: 'nao_encontrado' });
   res.json(rows[0]);
-});
+}));
 
 // admin: inscritos de uma etapa (com status de pagamento e resultado)
-router.get('/:id/inscritos', exigirAdmin, async (req, res) => {
+router.get('/:id/inscritos', exigirAdmin, ah(async (req, res) => {
   const { rows } = await q(
     `SELECT p.id AS piloto_id, p.nome, p.apelido, p.peso_kg,
             i.id AS inscricao_id, COALESCE(i.pago,false) AS pago, i.pago_em,
@@ -58,10 +59,10 @@ router.get('/:id/inscritos', exigirAdmin, async (req, res) => {
     [req.params.id]
   );
   res.json(rows);
-});
+}));
 
 // admin: inscrever / desinscrever piloto na etapa
-router.post('/:id/inscritos/:pilotoId', exigirAdmin, async (req, res) => {
+router.post('/:id/inscritos/:pilotoId', exigirAdmin, ah(async (req, res) => {
   await q(
     `INSERT INTO inscricoes (etapa_id, piloto_id, valor_centavos)
      SELECT $1::int, $2::int, valor_centavos FROM etapas WHERE id = $1::int
@@ -69,15 +70,15 @@ router.post('/:id/inscritos/:pilotoId', exigirAdmin, async (req, res) => {
     [req.params.id, req.params.pilotoId]
   );
   res.json({ ok: true });
-});
+}));
 
-router.delete('/:id/inscritos/:pilotoId', exigirAdmin, async (req, res) => {
+router.delete('/:id/inscritos/:pilotoId', exigirAdmin, ah(async (req, res) => {
   await q('DELETE FROM inscricoes WHERE etapa_id = $1 AND piloto_id = $2', [req.params.id, req.params.pilotoId]);
   res.json({ ok: true });
-});
+}));
 
 // admin: marcar pagamento
-router.patch('/:id/inscritos/:pilotoId/pagamento', exigirAdmin, async (req, res) => {
+router.patch('/:id/inscritos/:pilotoId/pagamento', exigirAdmin, ah(async (req, res) => {
   const pago = !!(req.body && req.body.pago);
   await q(
     `INSERT INTO inscricoes (etapa_id, piloto_id, pago, pago_em, valor_centavos)
@@ -87,6 +88,6 @@ router.patch('/:id/inscritos/:pilotoId/pagamento', exigirAdmin, async (req, res)
     [req.params.id, req.params.pilotoId, pago]
   );
   res.json({ ok: true, pago });
-});
+}));
 
 export default router;

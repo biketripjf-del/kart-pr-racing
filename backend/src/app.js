@@ -23,7 +23,9 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('tiny'));
 
-app.get('/api/health', (req, res) => res.json({ ok: true, servico: 'pr-racing-cup' }));
+// `commit` = o que está no ar de verdade (a Railway injeta o SHA no deploy); fora dela vem null.
+const COMMIT = (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || null;
+app.get('/api/health', (req, res) => res.json({ ok: true, servico: 'pr-racing-cup', commit: COMMIT }));
 
 app.use('/api/admin', adminRoutes);
 app.use('/api/pilotos', pilotosRoutes);
