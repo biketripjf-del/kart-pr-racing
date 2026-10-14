@@ -10,6 +10,7 @@ import ResultadoEtapa from './pages/ResultadoEtapa.jsx';
 import AdminLogin from './pages/AdminLogin.jsx';
 import AdminPilotos from './pages/AdminPilotos.jsx';
 import AdminEtapa from './pages/AdminEtapa.jsx';
+import AoVivo from './pages/AoVivo.jsx';
 import { getToken } from './api.js';
 
 function Protegido({ children }) {
@@ -24,6 +25,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/" element={<Cadastro />} />
         <Route path="/ranking" element={<Ranking />} />
         <Route path="/etapa/:id" element={<ResultadoEtapa />} />
+        <Route path="/ao-vivo" element={<AoVivo />} />
+        <Route path="/ao-vivo/:slug" element={<AoVivo />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<Protegido><AdminPilotos /></Protegido>} />
         <Route path="/admin/etapa/:id" element={<Protegido><AdminEtapa /></Protegido>} />

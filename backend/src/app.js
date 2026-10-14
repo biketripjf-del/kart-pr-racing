@@ -12,6 +12,7 @@ import pilotosRoutes from './routes/pilotos.js';
 import etapasRoutes from './routes/etapas.js';
 import resultadosRoutes from './routes/resultados.js';
 import rankingRoutes from './routes/ranking.js';
+import aoVivoRoutes from './routes/aoVivo.js';
 import { ensureSeed } from './bootstrap.js';
 
 dotenv.config();
@@ -32,6 +33,7 @@ app.use('/api/pilotos', pilotosRoutes);
 app.use('/api/etapas', etapasRoutes);
 app.use('/api/resultados', resultadosRoutes);
 app.use('/api/ranking', rankingRoutes);
+app.use('/api/ao-vivo', aoVivoRoutes);
 
 // erro genérico (evita vazar stack)
 app.use((err, req, res, next) => {
