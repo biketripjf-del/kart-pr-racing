@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Trophy, Timer, Flag, Medal, Instagram, PencilLine } from 'lucide-react';
+import { Trophy, Timer, Flag, Medal, Instagram, PencilLine, Swords } from 'lucide-react';
 import { api } from '../api.js';
 import { Casca, Avatar, volta, dataBR } from '../components/Marca.jsx';
 
@@ -94,6 +94,7 @@ export default function Piloto() {
       )}
       {!n.corridas.length && <div className="card mt-4 p-5 text-center text-sm text-slate-400">Ainda não correu nenhuma corrida registrada no app.</div>}
 
+      <Link to={`/comparar?p=${p.id}`} className="btn btn-ghost w-full mt-4"><Swords size={16} /> Comparar com outro piloto</Link>
       <Link to={`/ficha/${p.id}`} className="mt-4 flex items-center justify-center gap-1 text-xs text-slate-400 hover:text-white"><PencilLine size={13} /> É você? Atualize sua ficha</Link>
     </Casca>
   );

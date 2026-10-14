@@ -12,6 +12,7 @@ import Regulamento from './pages/Regulamento.jsx';
 import Pilotos from './pages/Pilotos.jsx';
 import Piloto from './pages/Piloto.jsx';
 import Ranking from './pages/Ranking.jsx';
+import Comparar from './pages/Comparar.jsx';
 import ResultadoEtapa from './pages/ResultadoEtapa.jsx';
 import AdminLogin from './pages/AdminLogin.jsx';
 import AdminPilotos from './pages/AdminPilotos.jsx';
@@ -37,6 +38,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/pilotos" element={<Pilotos />} />
         <Route path="/piloto/:id" element={<Piloto />} />
         <Route path="/ranking" element={<Ranking />} />
+        <Route path="/comparar" element={<Comparar />} />
         <Route path="/etapa/:id" element={<ResultadoEtapa />} />
         <Route path="/ao-vivo" element={<AoVivo />} />
         <Route path="/ao-vivo/:slug" element={<AoVivo />} />

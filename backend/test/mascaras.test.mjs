@@ -1,0 +1,16 @@
+import * as M from '../../frontend/src/mascaras.js';
+import assert from 'node:assert';
+const eq = (a, b) => assert.strictEqual(a, b);
+eq(M.telefone('32999943553'), '(32) 99994-3553');
+eq(M.telefone('+55 32 99994-3553'), '(32) 99994-3553');
+eq(M.telefone('3232154355'), '(32) 3215-4355');
+eq(M.telefone('3'), '(3'); eq(M.telefone('329'), '(32) 9'); eq(M.telefone(''), '');
+eq(M.telefoneCompleto('(32) 9999'), false); eq(M.telefoneCompleto('(32) 99994-3553'), true);
+eq(M.data('07031988'), '07/03/1988'); eq(M.data('0703'), '07/03'); eq(M.data('07/0'), '07/0');
+eq(M.dataParaISO('07/03/1988'), '1988-03-07'); eq(M.dataParaISO('31/02/1990'), null); eq(M.dataParaISO(''), '');
+eq(M.dataParaISO('07/03/19'), null); eq(M.dataParaISO('01/01/2024'), null);
+eq(M.isoParaData('1988-03-07'), '07/03/1988');
+eq(M.peso('82.5'), '82,5'); eq(M.peso('82,55'), '82,5'); eq(M.peso('1000'), '100'); eq(M.peso('82,'), '82,');
+eq(M.altura('1,75'), '175'); eq(M.altura('1755'), '175');
+eq(M.instagram('@Brunner.Vieira '), 'brunner.vieira'); eq(M.instagram('https://www.instagram.com/edrive_jf/?hl=pt'), 'edrive_jf');
+console.log('mascaras: 24 ok');
