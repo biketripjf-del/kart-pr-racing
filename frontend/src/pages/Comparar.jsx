@@ -38,7 +38,7 @@ function confronto(a, b) {
 
 function Celula({ valor, destaque, fmt }) {
   return (
-    <td className={`px-2 py-2 text-center tabular-nums ${destaque ? 'text-[color:var(--color-gold)] font-extrabold' : ''}`}>
+    <td className={`px-1 py-2 text-center tabular-nums ${destaque ? 'text-[color:var(--color-gold)] font-extrabold' : ''}`}>
       {valor == null ? <span className="text-slate-600">—</span> : (fmt ? fmt(valor) : valor)}
     </td>
   );
@@ -114,12 +114,12 @@ export default function Comparar() {
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  <th className="sticky left-0 bg-[#0f1e33] min-w-[110px]" />
+                  <th className="sticky left-0 bg-[#0f1e33] w-[88px]" />
                   {sel.map((d) => (
-                    <th key={d.piloto.id} className="px-2 pt-3 pb-2 min-w-[84px] align-top">
+                    <th key={d.piloto.id} className="px-1 pt-3 pb-2 min-w-[64px] align-top">
                       <Link to={`/piloto/${d.piloto.id}`} className="flex flex-col items-center gap-1">
-                        <Avatar id={d.piloto.id} v={d.piloto.foto_v} nome={d.piloto.nome} tam={52} />
-                        <span className="text-xs font-semibold leading-tight">{d.piloto.nome}</span>
+                        <Avatar id={d.piloto.id} v={d.piloto.foto_v} nome={d.piloto.nome} tam={sel.length > 3 ? 40 : 52} />
+                        <span className="text-[11px] font-semibold leading-tight">{d.piloto.nome}</span>
                       </Link>
                     </th>
                   ))}
@@ -131,7 +131,7 @@ export default function Comparar() {
                   const best = melhorDe(vs, sentido);
                   return (
                     <tr key={rot} className="border-t border-[#1d3252]">
-                      <td className="sticky left-0 bg-[#0f1e33] px-3 py-2 text-slate-300">{rot}</td>
+                      <td className="sticky left-0 bg-[#0f1e33] pl-3 pr-1 py-2 text-xs text-slate-300">{rot}</td>
                       {vs.map((v, i) => <Celula key={i} valor={v} destaque={best != null && v === best} fmt={fmt} />)}
                     </tr>
                   );
@@ -141,7 +141,7 @@ export default function Comparar() {
                   const best = melhorDe(vs, 'menor');
                   return (
                     <tr key={t} className="border-t border-[#1d3252]">
-                      <td className="sticky left-0 bg-[#0f1e33] px-3 py-2 text-slate-300">Melhor volta<div className="text-[11px] text-slate-500">{t}</div></td>
+                      <td className="sticky left-0 bg-[#0f1e33] pl-3 pr-1 py-2 text-xs text-slate-300">Melhor volta<div className="text-[11px] text-slate-500">{t}</div></td>
                       {vs.map((v, i) => <Celula key={i} valor={v} destaque={best != null && v === best} fmt={volta} />)}
                     </tr>
                   );
