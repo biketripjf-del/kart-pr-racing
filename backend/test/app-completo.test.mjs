@@ -170,6 +170,10 @@ test('histórico: na copa, a FINAL ordena o topo e o resto segue a soma das bate
   assert.equal(c.linhas.length, 28);
   assert.equal(c.linhas[14].na_final, false);
   assert.equal(c.linhas[14].pos, 15);
+  const campeao = numerosDoPiloto([copa({ ...sess, FINAL: homolog(linhas(finalistas)) })], 'id:206');
+  assert.equal(campeao.titulos, 1, 'B7 (id 206) venceu a final = 1 título');
+  assert.equal(campeao.finais, 1);
+  assert.equal(numerosDoPiloto([copa({ ...sess, FINAL: homolog(linhas(finalistas)) })], 'id:100').titulos, 0, 'A1 venceu as baterias, mas não a final');
 });
 
 test('ranking: colocação = pontos; quem faltou ao evento leva nº de classificados + 1; teste não conta', () => {
