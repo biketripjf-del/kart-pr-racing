@@ -2,28 +2,16 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, MapPin, Clock, UserRound, Shuffle, Radio, Megaphone, Pin } from 'lucide-react';
 import { api } from '../api.js';
-import { Casca, dataBR, quandoBRT, diaDaSemana } from '../components/Marca.jsx';
+import { Casca, Contador, useAgora, dataBR, quandoBRT, diaDaSemana } from '../components/Marca.jsx';
 
-// contagem até a hora em que o kart abre (sex 23/10 15:00 BRT, no evento atual)
+// contagem até a hora em que o kart abre (sex 23/10 15:00 BRT, no evento atual) — anda de segundo em segundo
 function Contagem({ data, hora }) {
-  const [agora, setAgora] = useState(Date.now());
-  useEffect(() => { const t = setInterval(() => setAgora(Date.now()), 30000); return () => clearInterval(t); }, []);
+  const agora = useAgora(1000);
   if (!data) return null;
   const hh = (String(hora || '').match(/(\d{1,2}):(\d{2})/) || [null, '15', '00']).slice(1).join(':');
   const alvo = new Date(`${String(data).slice(0, 10)}T${hh.padStart(5, '0')}:00-03:00`).getTime();
-  const falta = alvo - agora;
-  if (falta <= 0) return null;
-  const d = Math.floor(falta / 86400000); const h = Math.floor((falta % 86400000) / 3600000); const m = Math.floor((falta % 3600000) / 60000);
-  return (
-    <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-      {[[d, 'dias'], [h, 'horas'], [m, 'min']].map(([n, r]) => (
-        <div key={r} className="rounded-xl bg-[#0a1930] border border-[#24406b] py-2">
-          <div className="text-3xl font-extrabold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{n}</div>
-          <div className="text-[11px] uppercase tracking-wide text-slate-400">{r}</div>
-        </div>
-      ))}
-    </div>
-  );
+  if (alvo - agora <= 0) return null;
+  return <div className="mt-4"><Contador ms={alvo - agora} /></div>;
 }
 
 export default function Inicio() {

@@ -16,7 +16,9 @@ export default function AdminLogin() {
     try {
       const { data } = await api.post('/admin/login', { usuario, senha });
       setToken(data.token);
-      nav('/admin');
+      // /admin/login?volta=/sorteio volta pra tela de onde veio
+      const volta = new URLSearchParams(location.search).get('volta') || '';
+      nav(/^\/[a-z]/.test(volta) ? volta : '/admin');
     } catch {
       toast.error('Usuário ou senha inválidos.');
     } finally {

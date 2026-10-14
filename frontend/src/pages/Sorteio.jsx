@@ -1,28 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Shuffle, Eye, ShieldCheck } from 'lucide-react';
 import { api } from '../api.js';
-import { Casca, Avatar, quandoBRT } from '../components/Marca.jsx';
+import { Casca, Avatar, Contador, quandoBRT } from '../components/Marca.jsx';
+import { AdminSorteio, useAdmin } from '../components/AdminApp.jsx';
 
 // Sorteio dos grupos AO VIVO. Quem manda é o servidor: ele começa na hora marcada e revela 1 nome a cada 5 s.
 // A tela só pergunta (de 1,5 em 1,5 s) e anima. Os nomes ainda não sorteados nunca chegam aqui.
 const PERGUNTA_MS = 1500;
-const doisDig = (n) => String(n).padStart(2, '0');
-
-function Relogio({ ms }) {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const d = Math.floor(s / 86400); const h = Math.floor((s % 86400) / 3600); const m = Math.floor((s % 3600) / 60); const ss = s % 60;
-  const partes = d > 0 ? [[d, 'dias'], [h, 'h'], [m, 'min']] : [[h, 'h'], [m, 'min'], [ss, 's']];
-  return (
-    <div className="grid grid-cols-3 gap-2 text-center">
-      {partes.map(([n, r]) => (
-        <div key={r} className="rounded-xl bg-[#0a1930] border border-[#24406b] py-3">
-          <div className="text-4xl font-extrabold tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>{doisDig(n)}</div>
-          <div className="text-[11px] uppercase tracking-wide text-slate-400">{r}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function ColunaGrupo({ g, nomes, fotos, ultimo }) {
   return (
@@ -51,6 +35,7 @@ export default function Sorteio() {
   const [agora, setAgora] = useState(Date.now());
   const [tambor, setTambor] = useState('');
   const timer = useRef(null);
+  const admin = useAdmin(); // o painel de marcar só aparece pro organizador logado
 
   useEffect(() => { api.get('/config').then((r) => setEvento(r.data.evento_atual)); }, []);
   useEffect(() => {
@@ -84,10 +69,12 @@ export default function Sorteio() {
     setTambor(restantes[Math.floor(Math.random() * restantes.length)]);
   }, [girando, agora, restantes]);
 
+  const painel = admin ? <AdminSorteio naTela /> : null;
   if (s === undefined) return <Casca sub="Sorteio dos grupos"><div className="text-center text-slate-400 py-10">Carregando…</div></Casca>;
   if (s === null) {
     return (
       <Casca sub="Sorteio dos grupos">
+        {painel}
         <div className="card p-8 text-center text-slate-300">
           <Shuffle className="mx-auto text-[color:var(--color-gold)] mb-3" size={40} />
           O sorteio dos grupos ainda não foi marcado. Quando for, a contagem aparece aqui e o sorteio roda sozinho, ao vivo, pra todo mundo ao mesmo tempo.
@@ -101,10 +88,11 @@ export default function Sorteio() {
 
   return (
     <Casca sub={`Sorteio dos grupos${s.titulo ? ` · ${s.titulo}` : ''}`}>
+      {painel}
       {s.fase === 'contagem' && (
         <div className="card p-5">
           <div className="text-center text-sm text-slate-300">Começa sozinho em <b>{quandoBRT(s.agendado_para)}</b> (horário de Brasília)</div>
-          <div className="mt-4"><Relogio ms={new Date(s.agendado_para).getTime() - agoraServ} /></div>
+          <div className="mt-4"><Contador grande ms={new Date(s.agendado_para).getTime() - agoraServ} /></div>
           <div className="mt-4 text-center text-xs text-slate-400">
             {s.inscritos} pilotos no pote · 1 nome a cada {Math.round(s.passo_ms / 1000)} s · alterna Grupo A e Grupo B
             {s.cabecas?.length ? ` · ${s.cabecas.length} cabeças de chave saem primeiro` : ' · sem cabeça de chave'}

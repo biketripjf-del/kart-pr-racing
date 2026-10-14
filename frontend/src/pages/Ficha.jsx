@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Camera, CheckCircle2, Search, Lock } from 'lucide-react';
 import { api } from '../api.js';
 import { Casca, Avatar } from '../components/Marca.jsx';
+import * as M from '../mascaras.js';
 
 // ---------- /ficha: o piloto acha o próprio nome ----------
 export function FichaLista() {
@@ -95,13 +96,18 @@ export function FichaForm() {
     }).catch(() => setPiloto(false));
   }, [id]);
 
-  const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
+  // mascara = função de mascaras.js aplicada a cada tecla
+  const set = (k, mascara) => (e) => { const v = mascara ? mascara(e.target.value) : e.target.value; setF((x) => ({ ...x, [k]: v })); };
   const [aberta, setAberta] = useState(false);
 
   async function abrir() {
     try {
       const { data } = await api.post(`/ficha/${id}/abrir`, { confirmacao });
-      setF(Object.fromEntries(Object.keys(VAZIO).map((k) => [k, data[k] == null ? '' : String(data[k])])));
+      const t = Object.fromEntries(Object.keys(VAZIO).map((k) => [k, data[k] == null ? '' : String(data[k])]));
+      setF({
+        ...t, whatsapp: M.telefone(t.whatsapp), emergencia_tel: M.telefone(t.emergencia_tel), data_nascimento: M.isoParaData(t.data_nascimento),
+        peso_kg: M.peso(t.peso_kg), altura_cm: M.altura(t.altura_cm), instagram: M.instagram(t.instagram),
+      });
       setAberta(true);
       toast.success('Ficha aberta. Altere o que quiser e salve.');
     } catch { toast.error('WhatsApp não confere com o da ficha.'); }
@@ -116,11 +122,17 @@ export function FichaForm() {
   async function enviar(e) {
     e.preventDefault();
     if (!aceite) return toast.error('Marque o aceite no fim da ficha.');
+    if (!M.telefoneCompleto(f.whatsapp)) return toast.error('WhatsApp incompleto: DDD + número.');
+    if (f.emergencia_tel && !M.telefoneCompleto(f.emergencia_tel)) return toast.error('Telefone de emergência incompleto: DDD + número.');
+    const nasc = M.dataParaISO(f.data_nascimento);
+    if (nasc === null) return toast.error('Data de nascimento inválida. Use DD/MM/AAAA.');
+    if (f.peso_kg && !(Number(f.peso_kg.replace(',', '.')) >= 30 && Number(f.peso_kg.replace(',', '.')) <= 250)) return toast.error('Peso em kg, entre 30 e 250.');
+    if (f.altura_cm && !(+f.altura_cm >= 120 && +f.altura_cm <= 230)) return toast.error('Altura em centímetros, entre 120 e 230 (ex.: 175).');
     setEnviando(true);
     const num = (v) => (v === '' ? null : Number(String(v).replace(',', '.')));
     try {
       await api.post(`/ficha/${id}`, {
-        ...f, peso_kg: num(f.peso_kg), altura_cm: num(f.altura_cm), consentimento: true,
+        ...f, data_nascimento: nasc, peso_kg: num(f.peso_kg), altura_cm: num(f.altura_cm), consentimento: true,
         ...(foto ? { foto } : {}), ...(piloto?.tem_ficha ? { confirmacao } : {}),
       });
       toast.success('Ficha salva. Bora pra pista!');
@@ -153,7 +165,7 @@ export function FichaForm() {
             <div className="flex items-center gap-2 text-sm font-semibold text-amber-300"><Lock size={15} /> Essa ficha já foi preenchida</div>
             <div className="mt-1 text-xs text-slate-400">Para alterar, digite o WhatsApp que está cadastrado nela.</div>
             <div className="mt-3 flex gap-2">
-              <input className="input" inputMode="tel" placeholder="WhatsApp cadastrado" value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} required />
+              <input className="input" inputMode="tel" placeholder="(32) 99999-9999" value={confirmacao} onChange={(e) => setConfirmacao(M.telefone(e.target.value))} required />
               <button type="button" className="btn btn-ghost shrink-0" onClick={abrir}>{aberta ? 'Aberta' : 'Abrir'}</button>
             </div>
           </div>
@@ -163,20 +175,29 @@ export function FichaForm() {
           <div className="font-semibold">Quem é você</div>
           <Campo rot="Nome completo *"><input className="input" value={f.nome} onChange={set('nome')} required minLength={3} /></Campo>
           <Campo rot="Apelido" dica="Aparece na sua página de piloto."><input className="input" value={f.apelido} onChange={set('apelido')} maxLength={40} /></Campo>
-          <Campo rot="WhatsApp *"><input className="input" inputMode="tel" placeholder="(32) 99999-9999" value={f.whatsapp} onChange={set('whatsapp')} required minLength={10} /></Campo>
+          <Campo rot="WhatsApp *"><input className="input" type="tel" inputMode="tel" autoComplete="tel-national" placeholder="(32) 99999-9999" value={f.whatsapp} onChange={set('whatsapp', M.telefone)} required minLength={14} /></Campo>
           <div className="grid grid-cols-2 gap-3">
-            <Campo rot="Nascimento"><input className="input" type="date" value={f.data_nascimento} onChange={set('data_nascimento')} /></Campo>
-            <Campo rot="Cidade"><input className="input" value={f.cidade} onChange={set('cidade')} /></Campo>
+            <Campo rot="Nascimento"><input className="input" inputMode="numeric" autoComplete="bday" placeholder="DD/MM/AAAA" value={f.data_nascimento} onChange={set('data_nascimento', M.data)} /></Campo>
+            <Campo rot="Cidade"><input className="input" autoComplete="address-level2" placeholder="Juiz de Fora" value={f.cidade} onChange={set('cidade')} /></Campo>
           </div>
-          <Campo rot="Instagram" dica="Pro videomaker marcar você."><input className="input" placeholder="@seuperfil" value={f.instagram} onChange={set('instagram')} /></Campo>
+          <Campo rot="Instagram" dica="Pro videomaker marcar você."><div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">@</span>
+            <input className="input pl-7" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="seuperfil" value={f.instagram} onChange={set('instagram', M.instagram)} />
+          </div></Campo>
           <Campo rot="Escritório / empresa"><input className="input" value={f.empresa} onChange={set('empresa')} /></Campo>
         </div>
 
         <div className="card p-5 space-y-4">
           <div className="font-semibold">Pista</div>
           <div className="grid grid-cols-2 gap-3">
-            <Campo rot="Peso (kg)" dica="Com a roupa de correr."><input className="input" inputMode="decimal" value={f.peso_kg} onChange={set('peso_kg')} /></Campo>
-            <Campo rot="Altura (cm)"><input className="input" inputMode="numeric" placeholder="175" value={f.altura_cm} onChange={set('altura_cm')} /></Campo>
+            <Campo rot="Peso" dica="Com a roupa de correr."><div className="relative">
+              <input className="input pr-9" inputMode="decimal" placeholder="80,5" value={f.peso_kg} onChange={set('peso_kg', M.peso)} />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">kg</span>
+            </div></Campo>
+            <Campo rot="Altura" dica="Em centímetros."><div className="relative">
+              <input className="input pr-9" inputMode="numeric" placeholder="175" value={f.altura_cm} onChange={set('altura_cm', M.altura)} />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">cm</span>
+            </div></Campo>
           </div>
           <Campo rot="Experiência com kart">
             <select className="input" value={f.experiencia} onChange={set('experiencia')}>
@@ -193,7 +214,7 @@ export function FichaForm() {
         <div className="card p-5 space-y-4">
           <div className="font-semibold">Emergência</div>
           <Campo rot="Contato de emergência (nome)"><input className="input" value={f.emergencia_nome} onChange={set('emergencia_nome')} /></Campo>
-          <Campo rot="Telefone do contato"><input className="input" inputMode="tel" value={f.emergencia_tel} onChange={set('emergencia_tel')} /></Campo>
+          <Campo rot="Telefone do contato"><input className="input" type="tel" inputMode="tel" placeholder="(32) 99999-9999" value={f.emergencia_tel} onChange={set('emergencia_tel', M.telefone)} /></Campo>
           <Campo rot="Tipo sanguíneo">
             <select className="input" value={f.tipo_sanguineo} onChange={set('tipo_sanguineo')}>
               <option value="">—</option>{['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'não sei'].map((t) => <option key={t}>{t}</option>)}

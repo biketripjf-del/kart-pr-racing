@@ -2,10 +2,14 @@ import { useEffect, useState } from 'react';
 import { Megaphone, Pin } from 'lucide-react';
 import { api } from '../api.js';
 import { Casca, quandoBRT } from '../components/Marca.jsx';
+import { AdminMural, useAdmin } from '../components/AdminApp.jsx';
 
 export default function Mural() {
   const [avisos, setAvisos] = useState(null);
+  const admin = useAdmin();
   useEffect(() => { api.get('/avisos').then((r) => setAvisos(r.data)).catch(() => setAvisos([])); }, []);
+  // organizador publica, fixa e apaga aqui mesmo; o resto só lê
+  if (admin) return <Casca sub="Mural de notícias e avisos"><AdminMural /></Casca>;
   return (
     <Casca sub="Mural de notícias e avisos">
       {!avisos && <div className="text-center text-slate-400 py-10">Carregando…</div>}

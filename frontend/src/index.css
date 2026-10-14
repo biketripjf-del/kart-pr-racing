@@ -49,9 +49,12 @@ body {
 .btn-ghost { background: #17294380; color: #cddcf3; border: 1px solid #1d3252; }
 .btn-gold { background: var(--color-gold); color: #1a1200; }
 
-.input {
-  width: 100%; background: #0a1930; border: 1px solid #24406b; color: #e8eef7;
-  border-radius: 10px; padding: .65rem .8rem; font-size: 1rem;
+/* em camada: assim pl-9/pr-9 (ícone dentro do campo) vencem o padding padrão */
+@layer components {
+  .input {
+    width: 100%; background: #0a1930; border: 1px solid #24406b; color: #e8eef7;
+    border-radius: 10px; padding: .65rem .8rem; font-size: 1rem;
+  }
 }
 .input:focus { outline: 2px solid var(--color-brand); border-color: transparent; }
 .label { font-size: .82rem; color: #9fb4d4; margin-bottom: .3rem; display: block; font-weight: 500; }

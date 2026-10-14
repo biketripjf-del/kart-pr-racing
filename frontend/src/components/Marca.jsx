@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Flag } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
+import { getToken, setToken } from '../api.js';
 
 export function Marca({ sub }) {
   return (
@@ -19,7 +21,7 @@ export function Marca({ sub }) {
 
 // menu comum a todas as páginas públicas — rola de lado no celular
 export const MENU = [
-  ['/', 'Início'], ['/ao-vivo', 'Ao vivo'], ['/sorteio', 'Sorteio'], ['/ranking', 'Ranking'], ['/pilotos', 'Pilotos'],
+  ['/', 'Início'], ['/ao-vivo', 'Ao vivo'], ['/sorteio', 'Sorteio'], ['/ranking', 'Ranking'], ['/pilotos', 'Pilotos'], ['/comparar', 'Comparar'],
   ['/mural', 'Mural'], ['/regulamento', 'Regulamento'], ['/ficha', 'Minha ficha'],
 ];
 
@@ -41,9 +43,15 @@ export function Menu() {
 }
 
 export function Rodape() {
+  const [org, setOrg] = useState(!!getToken());
   return (
-    <div className="mt-10 mb-6 flex justify-center gap-4 text-xs text-slate-500">
+    <div className="mt-10 mb-6 flex flex-col items-center gap-2 text-xs text-slate-500">
       <span>P&amp;R Racing Cup · Kartódromo Internacional de Volta Redonda</span>
+      {org && (
+        <span className="text-[color:var(--color-gold)]">
+          modo organizador · <Link to="/admin" className="underline">painel</Link> · <button className="underline" onClick={() => { setToken(null); setOrg(false); location.reload(); }}>sair</button>
+        </span>
+      )}
     </div>
   );
 }
@@ -95,3 +103,26 @@ export const quandoBRT = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', {
 export const diaDaSemana = (iso) => (iso ? new Date(`${String(iso).slice(0, 10)}T12:00:00-03:00`).toLocaleDateString('pt-BR', {
   weekday: 'long', timeZone: 'America/Sao_Paulo',
 }) : '');
+
+// contagem regressiva AO VIVO: dias · horas · min · seg, anda de segundo em segundo
+export function Contador({ ms, grande }) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const partes = [[Math.floor(s / 86400), 'dias'], [Math.floor((s % 86400) / 3600), 'horas'], [Math.floor((s % 3600) / 60), 'min'], [s % 60, 'seg']];
+  return (
+    <div className="grid grid-cols-4 gap-2 text-center">
+      {partes.map(([n, r]) => (
+        <div key={r} className={`rounded-xl bg-[#0a1930] border border-[#24406b] ${grande ? 'py-3' : 'py-2'}`}>
+          <div className={`${grande ? 'text-4xl' : 'text-3xl'} font-extrabold tabular-nums`} style={{ fontFamily: 'var(--font-display)' }}>{String(n).padStart(2, '0')}</div>
+          <div className="text-[11px] uppercase tracking-wide text-slate-400">{r}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// o relógio da tela, batendo a cada `passo` ms
+export function useAgora(passo = 1000) {
+  const [agora, setAgora] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setAgora(Date.now()), passo); return () => clearInterval(t); }, [passo]);
+  return agora;
+}
