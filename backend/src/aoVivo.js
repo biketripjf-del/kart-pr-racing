@@ -9,8 +9,8 @@
 //    Nada de grid invertido ("não é produtivo").
 //  - "A sua posição é o número de pontos que você fez": 1º = 1 ponto, 5º = 5. Menor soma vence.
 //    Perdeu a bateria = 14 pontos (texto). Desempate: melhor volta nas baterias (texto).
-//  - Campeão = menor número de pontos somando as corridas (baterias + final), entre os 14 da final;
-//    empate decide a posição na final.
+//  - A soma das baterias define os 14 da final; a FINAL sozinha decide campeão e pódio
+//    (Brunner 14/10 14:41 BRT: a soma do campeão "não inclui" a final — vence quem ganhar a final).
 //  - Punição do árbitro: 3 posições no resultado; reincidência de largada queimada = fim de fila (texto).
 
 export const SESSOES = [
@@ -203,27 +203,20 @@ export function calcularQuadro(estado) {
   const nomesFinal = classificados.map((l) => l.piloto);
   const gridTomada = gridDaTomada((sessoes.FINAL || {}).tomada, nomesFinal, atrasados);
   fin.grid = gridTomada || (nomesFinal.length ? nomesFinal : null);
-  const finalDe = (nome) => fin.resultado.find((l) => l.piloto === nome);
-  const campeonato = classificados.map((l) => {
-    const rf = finalDe(l.piloto);
-    return {
-      piloto: l.piloto, grupo: l.grupo, baterias: l.total,
-      final: rf ? rf.pontos : null,
-      total: l.total + (rf ? rf.pontos : 0),
-      pos_final: rf ? rf.pos_oficial : null,
-    };
-  });
   const correuFinal = fin.resultado.length > 0;
-  campeonato.sort((a, b) => a.total - b.total || (a.pos_final ?? Infinity) - (b.pos_final ?? Infinity));
-  campeonato.forEach((l, i) => { l.pos = i + 1; });
+  const classificacao = fin.resultado.map((l) => ({
+    pos: l.pos_oficial, piloto: l.piloto,
+    grupo: classificados.find((c) => c.piloto === l.piloto)?.grupo || null,
+    baterias: classificados.find((c) => c.piloto === l.piloto)?.total ?? null,
+  }));
   out.final = {
     grid: (fin.grid || []).map((p, i) => ({ largada: i + 1, piloto: p, grupo: classificados.find((l) => l.piloto === p)?.grupo || null,
       total: classificados.find((l) => l.piloto === p)?.total ?? null })),
     grid_pela_tomada: !!gridTomada,
     definido,
-    classificacao: correuFinal ? campeonato : [],
-    podio: correuFinal ? campeonato.slice(0, 3).map((l) => ({ pos: l.pos, piloto: l.piloto, total: l.total })) : [],
-    campeao: fin.status === 'homologado' && correuFinal ? campeonato[0]?.piloto || null : null,
+    classificacao,
+    podio: classificacao.slice(0, 3).map((l) => ({ pos: l.pos, piloto: l.piloto })),
+    campeao: fin.status === 'homologado' && correuFinal ? classificacao[0]?.piloto || null : null,
   };
 
   const melhor = voltasDoDia.slice().sort((a, b) => a.mv_ms - b.mv_ms)[0];

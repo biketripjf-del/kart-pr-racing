@@ -172,22 +172,13 @@ function Final({ q }) {
               <div key={p.piloto} className={`rounded-xl p-3 ${p.pos === 1 ? 'bg-[color:var(--color-gold)] text-black' : 'bg-[#13294a]'}`}>
                 <div className="text-2xl font-extrabold" style={{ fontFamily: 'var(--font-display)' }}>{p.pos}º</div>
                 <div className="text-sm font-semibold leading-tight">{p.piloto}</div>
-                <div className="text-[11px] opacity-80">{p.total} pts</div>
               </div>
             ))}
           </div>
         </div>
       )}
-      {final.classificacao.length > 0 && (
-        <div className="card mt-4">
-          <div className="px-4 pt-3 pb-1 font-semibold">Campeonato · baterias + final</div>
-          <Tabela cab={['#', 'Piloto', 'Bat.', 'Final', 'Total']}
-            linhas={final.classificacao.map((l) => [l.pos, l.piloto, l.baterias, l.final ?? '—', <b>{l.total}</b>])} />
-          <div className="px-4 py-2 text-[11px] text-slate-400">Campeão = menor soma. Empate: quem chegou na frente na final.</div>
-        </div>
-      )}
-      <CartaoSessao s={fin} vazio="Os 14 melhores da classificação geral.">
-        {fin.resultado.length ? <Resultado s={fin} comPontos /> : (
+      <CartaoSessao s={fin} vazio="Os 14 melhores da classificação geral. Quem vencer a final é o campeão.">
+        {fin.resultado.length ? <Resultado s={fin} /> : (
           final.grid.length > 0 && (
             <>
               <Tabela cab={['Larga', 'Piloto', 'Gr', 'Pts']}
