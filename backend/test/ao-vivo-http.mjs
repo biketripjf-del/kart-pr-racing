@@ -45,11 +45,20 @@ ok(lanc.status === 200 && lanc.json.versao === 2, 'lança a Bateria 1-A (versão
 const { status, json } = await http('GET', '/api/ao-vivo/copa-3');
 ok(status === 200, 'leitura pública sem login');
 ok(json.quadro.sessoes.B1_A.status === 'provisorio', 'folha nova entra como PROVISÓRIA');
-ok(json.quadro.sessoes.B2_A.grid[0] === 'P14', 'grid da Bateria 2-A já invertido (P14 na pole)');
-ok(json.quadro.grupos.A.tabela[0].piloto === 'P1' && json.quadro.grupos.A.tabela[0].total === 14, 'placar do grupo A: P1 com 14');
-ok(json.quadro.em_curso === 'CLASS_A', 'em curso = 1ª sessão não homologada');
+ok(json.quadro.sessoes.B2_A.grid === null, 'Bateria 2-A sem grid até a tomada dela (nada de inverter)');
+ok(json.quadro.grupos.A.tabela[0].piloto === 'P1' && json.quadro.grupos.A.tabela[0].total === 1, 'placar do grupo A: P1 com 1 ponto');
+ok(json.quadro.geral.tabela[0].piloto === 'P1' && json.quadro.geral.tabela[0].vai_pra_final, 'geral: P1 na frente, dentro do corte');
+ok(json.quadro.em_curso === 'B1_A', 'em curso = 1ª sessão não homologada');
+
+const tom = pilotos.slice(0, 14).reverse().map((p, i) => ({ piloto: p.nome, pos: i + 1, mv: `00:49.${100 + i}` }));
+const lt = await http('PUT', '/api/ao-vivo/copa-3/sessao/B2_A', { tomada: tom }, token);
+const g2 = await http('GET', '/api/ao-vivo/copa-3');
+ok(lt.status === 200 && g2.json.quadro.sessoes.B2_A.grid[0] === 'P14' && g2.json.quadro.sessoes.B2_A.status === 'aguardando',
+   'tomada da B2-A vira o grid (P14 na pole) sem marcar a corrida como corrida');
 
 const hom = await http('PUT', '/api/ao-vivo/copa-3/sessao/B1_A', { status: 'homologado' }, token);
+const tomRuim = await http('PUT', '/api/ao-vivo/copa-3/sessao/B2_A', { tomada: [{ piloto: 'Fulano', pos: 1 }] }, token);
+ok(tomRuim.status === 400 && tomRuim.json.detalhes.some((d) => d.startsWith('tomada de tempo')), 'tomada com piloto fora da lista = 400');
 const depois = await http('GET', '/api/ao-vivo/copa-3');
 ok(hom.status === 200 && depois.json.quadro.sessoes.B1_A.status === 'homologado'
    && depois.json.quadro.sessoes.B1_A.resultado.length === 14, 'homologar mantém a folha');
