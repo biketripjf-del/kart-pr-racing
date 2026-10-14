@@ -8,6 +8,10 @@
 //   tomada  <slug> <CODIGO> <folha.json>   lança a tomada de tempo da corrida (vira o grid)
 //   sessao  <slug> <CODIGO> <folha.json> [status]   lança o resultado da corrida (nomes da folha são resolvidos)
 //   status  <slug> <CODIGO> <status>       aguardando | ao_vivo | provisorio | homologado
+//   vincular <slug>                        liga cada piloto do evento ao cadastro (cria quem não existe)
+//   corrida <slug> <CODIGO> <folha.json>   folha de uma corrida em evento de histórico (formato 'corridas')
+//   sorteio <slug> <ISO-com-fuso>          marca o sorteio dos grupos (ex.: 2026-10-20T20:00:00-03:00) · 'cancelar' cancela
+//   aviso   <titulo> <texto.txt> [fixar]   publica no mural (o <slug> aqui é o título)
 // folha.json: { "linhas": [{ "nome": "GABRIEL LANNA ALMEIDA", "pos": 1, "kart": 8, "mv": "00:48.485", "voltas": 18 }],
 //               "observacoes": "..." }  — campos opcionais por linha: ausente, punicao (3 | "fim").
 import fs from 'fs';
@@ -79,6 +83,42 @@ async function main() {
     console.log(r.status, JSON.stringify(r.json));
     const v = await http('GET', `/api/ao-vivo/${slug}`);
     return imprimir(v.json, codigo);
+  }
+  if (cmd === 'vincular') {
+    const r = await http('POST', `/api/ao-vivo/${slug}/vincular`, {}, await token());
+    console.log(r.status, JSON.stringify(r.json, null, 1));
+    return;
+  }
+  if (cmd === 'sorteio') {
+    const t = await token();
+    const r = resto[0] === 'cancelar'
+      ? await http('DELETE', `/api/sorteio/${slug}`, null, t)
+      : await http('POST', `/api/sorteio/${slug}`, { agendado_para: resto[0], ...(resto[1] ? { passo_ms: Number(resto[1]) } : {}) }, t);
+    console.log(r.status, JSON.stringify(r.json));
+    return;
+  }
+  if (cmd === 'aviso') {
+    const r = await http('POST', '/api/avisos', { titulo: slug, texto: fs.readFileSync(resto[0], 'utf8').trim(), fixado: resto[1] === 'fixar' }, await token());
+    console.log(r.status, JSON.stringify(r.json));
+    return;
+  }
+  if (cmd === 'corrida') {
+    const [codigo, arquivo] = resto;
+    const folha = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
+    const atual = await http('GET', `/api/ao-vivo/${slug}`);
+    const problemas = [];
+    const linhas = folha.linhas.map((l) => {
+      if (l.piloto) return l;
+      const r = resolverNome(l.nome, atual.json.pilotos);
+      if (r.piloto) return { ...l, piloto: r.piloto, nome_folha: l.nome };
+      problemas.push(`"${l.nome}": ${r.ambiguo ? `ambíguo (${r.ambiguo.join(' / ')})` : 'não está na lista'}`);
+      return l;
+    });
+    if (problemas.length) { problemas.forEach((p) => console.error('  ' + p)); process.exit(2); }
+    const r = await http('PUT', `/api/ao-vivo/${slug}/corrida/${codigo}`, { linhas, se_versao: atual.json.versao,
+      ...(folha.observacoes !== undefined ? { observacoes: folha.observacoes } : {}), ...(folha.tracado !== undefined ? { tracado: folha.tracado } : {}) }, await token());
+    console.log(r.status, JSON.stringify(r.json));
+    return;
   }
   if (cmd === 'sessao' || cmd === 'tomada') {
     const [codigo, arquivo, status] = resto;

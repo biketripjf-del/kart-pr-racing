@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { q } from '../db.js';
 import { exigirAdmin } from '../auth.js';
 import { ah } from '../async.js';
-import { calcularQuadro, validarSessao, SESSOES, STATUS } from '../aoVivo.js';
+import { calcularQuadro, validarSessao, normalizar, SESSOES, STATUS } from '../aoVivo.js';
 
 const router = Router();
 const CODIGOS = new Set(SESSOES.map((s) => s.codigo));
@@ -37,13 +37,81 @@ router.put('/:slug', exigirAdmin, ah(async (req, res) => {
   const nomes = estado.pilotos.map((p) => p.nome);
   if (new Set(nomes).size !== nomes.length) return res.status(400).json({ erro: 'piloto_repetido' });
   const atual = await lerEstado(req.params.slug);
-  const novo = { ...estado, sessoes: estado.sessoes || atual?.estado?.sessoes || {} };
+  // o vínculo com o cadastro (piloto_id) e o grupo sorteado não se perdem quando o estado vem de um arquivo antigo
+  const antes = new Map((atual?.estado?.pilotos || []).map((p) => [p.nome, p]));
+  const pilotos = estado.pilotos.map((p) => ({
+    ...p,
+    piloto_id: p.piloto_id ?? antes.get(p.nome)?.piloto_id ?? undefined,
+    grupo: p.grupo ?? antes.get(p.nome)?.grupo ?? null,
+  }));
+  const novo = { ...estado, pilotos, sessoes: estado.sessoes || atual?.estado?.sessoes || {}, corridas: estado.corridas || atual?.estado?.corridas };
   const { rows } = await q(
     `INSERT INTO ao_vivo (slug, estado) VALUES ($1, $2::jsonb)
      ON CONFLICT (slug) DO UPDATE SET estado = EXCLUDED.estado, versao = ao_vivo.versao + 1, atualizado_em = now()
      RETURNING versao`,
     [req.params.slug, JSON.stringify(novo)]
   );
+  res.json({ ok: true, versao: rows[0].versao });
+}));
+
+// admin: liga cada piloto do evento ao cadastro (pilotos.id). Casa por nome/apelido do evento contra nome e
+// apelido do cadastro; quem não casa ganha cadastro novo. É o id que junta o mesmo piloto em eventos diferentes.
+router.post('/:slug/vincular', exigirAdmin, ah(async (req, res) => {
+  const atual = await lerEstado(req.params.slug);
+  if (!atual) return res.status(404).json({ erro: 'evento_nao_encontrado' });
+  const { rows: cad } = await q('SELECT id, nome, apelido FROM pilotos WHERE ativo');
+  // 1º casa pelo nome usado nos OUTROS eventos (o piloto pode ter trocado o nome do cadastro na ficha);
+  // depois pelo nome/apelido do cadastro
+  const { rows: outros } = await q('SELECT estado FROM ao_vivo WHERE slug <> $1', [req.params.slug]);
+  const jaUsado = new Map();
+  for (const o of outros) for (const p of o.estado.pilotos || []) {
+    if (p.piloto_id == null) continue;
+    for (const k of [p.nome, ...(p.aliases || [])].map(normalizar)) (jaUsado.get(k) || jaUsado.set(k, new Set()).get(k)).add(p.piloto_id);
+  }
+  const relatorio = [];
+  const pilotos = [];
+  for (const p of atual.estado.pilotos || []) {
+    if (p.piloto_id != null) { pilotos.push(p); continue; }
+    const chaves = [p.nome, ...(p.aliases || [])].map(normalizar);
+    const porEvento = new Set(chaves.flatMap((k) => [...(jaUsado.get(k) || [])]));
+    const achados = porEvento.size ? [...porEvento].map((id) => ({ id }))
+      : cad.filter((c) => chaves.includes(normalizar(c.nome)) || (c.apelido && chaves.includes(normalizar(c.apelido))));
+    if (achados.length > 1) return res.status(409).json({ erro: 'nome_ambiguo', piloto: p.nome, candidatos: achados.map((c) => c.id) });
+    let id = achados[0]?.id;
+    if (id == null) {
+      const { rows } = await q('INSERT INTO pilotos (nome) VALUES ($1) RETURNING id, nome, apelido', [p.nome]);
+      id = rows[0].id; cad.push(rows[0]);
+      relatorio.push({ nome: p.nome, piloto_id: id, criado: true });
+    } else relatorio.push({ nome: p.nome, piloto_id: id, criado: false });
+    pilotos.push({ ...p, piloto_id: id });
+  }
+  const { rows } = await q(
+    `UPDATE ao_vivo SET estado = $2::jsonb, versao = versao + 1, atualizado_em = now() WHERE slug = $1 AND versao = $3 RETURNING versao`,
+    [req.params.slug, JSON.stringify({ ...atual.estado, pilotos }), atual.versao]
+  );
+  if (!rows[0]) return res.status(409).json({ erro: 'versao_mudou' });
+  res.json({ ok: true, versao: rows[0].versao, vinculados: relatorio });
+}));
+
+// admin: folha de uma corrida num evento formato 'corridas' (histórico, ex.: 17/07)
+router.put('/:slug/corrida/:codigo', exigirAdmin, ah(async (req, res) => {
+  const atual = await lerEstado(req.params.slug);
+  if (!atual) return res.status(404).json({ erro: 'evento_nao_encontrado' });
+  if (atual.estado.formato !== 'corridas') return res.status(400).json({ erro: 'evento_nao_e_de_corridas' });
+  const { linhas, observacoes, tracado, se_versao } = req.body || {};
+  if (se_versao != null && Number(se_versao) !== atual.versao) return res.status(409).json({ erro: 'versao_mudou', versao: atual.versao });
+  const erros = validarSessao(linhas || [], atual.estado.pilotos || []);
+  if (erros.length) return res.status(400).json({ erro: 'folha_invalida', detalhes: erros });
+  const corridas = atual.estado.corridas || [];
+  if (!corridas.some((c) => c.codigo === req.params.codigo)) return res.status(404).json({ erro: 'corrida_nao_encontrada' });
+  const novas = corridas.map((c) => (c.codigo === req.params.codigo ? {
+    ...c, linhas, ...(observacoes !== undefined ? { observacoes } : {}), ...(tracado !== undefined ? { tracado } : {}),
+  } : c));
+  const { rows } = await q(
+    `UPDATE ao_vivo SET estado = $2::jsonb, versao = versao + 1, atualizado_em = now() WHERE slug = $1 AND versao = $3 RETURNING versao`,
+    [req.params.slug, JSON.stringify({ ...atual.estado, corridas: novas }), atual.versao]
+  );
+  if (!rows[0]) return res.status(409).json({ erro: 'versao_mudou' });
   res.json({ ok: true, versao: rows[0].versao });
 }));
 

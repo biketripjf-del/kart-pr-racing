@@ -1,57 +1,67 @@
 import { useEffect, useState } from 'react';
-import { Trophy, Medal } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Trophy } from 'lucide-react';
 import { api } from '../api.js';
-import { Casca } from '../components/Marca.jsx';
+import { Casca, Avatar, dataBR } from '../components/Marca.jsx';
 
+// Ranking do campeonato: colocação em cada evento = pontos (1º = 1), menor soma vence.
 export default function Ranking() {
-  const [dados, setDados] = useState(null);
-
-  useEffect(() => {
-    api.get('/ranking').then((r) => setDados(r.data)).catch(() => setDados({ ranking: [], etapas_realizadas: [] }));
-  }, []);
-
-  if (!dados) return <Casca sub="Ranking"><div className="text-center text-slate-400 py-10">Carregando…</div></Casca>;
-
-  const medalha = (pos) =>
-    pos === 1 ? 'text-yellow-400' : pos === 2 ? 'text-slate-300' : pos === 3 ? 'text-amber-600' : 'text-slate-500';
-
-  return (
-    <Casca sub="Classificação do campeonato">
-      {dados.ranking.length === 0 ? (
+  const [r, setR] = useState(null);
+  useEffect(() => { api.get('/historico/ranking').then((x) => setR(x.data)).catch(() => setR({ eventos: [], tabela: [] })); }, []);
+  if (!r) return <Casca sub="Ranking"><div className="text-center text-slate-400 py-10">Carregando…</div></Casca>;
+  if (!r.tabela.length) {
+    return (
+      <Casca sub="Ranking do campeonato">
         <div className="card p-8 text-center text-slate-300">
           <Trophy className="mx-auto text-[color:var(--color-gold)] mb-3" size={40} />
-          O ranking abre depois da primeira etapa. Bora correr! 🏁
-          <div className="mt-4"><Link to="/" className="btn btn-primary inline-flex">Fazer inscrição</Link></div>
+          O ranking abre depois da primeira corrida lançada.
         </div>
-      ) : (
-        <div className="card overflow-hidden">
-          {dados.ranking.map((l) => (
-            <div key={l.piloto_id} className="flex items-center gap-3 px-4 py-3 border-b border-[#1d3252] last:border-0">
-              <div className={`w-8 text-center font-bold ${medalha(l.posicao)}`}>
-                {l.posicao <= 3 ? <Medal size={20} className="mx-auto" /> : l.posicao}
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold">{l.apelido || l.nome}</div>
-                {l.apelido && <div className="text-xs text-slate-400">{l.nome}</div>}
-              </div>
-              <div className="text-xs text-slate-400">{l.etapas_disputadas} et.</div>
-              <div className="text-xl font-bold text-[color:var(--color-brand)] w-12 text-right">{l.pontos_liquidos}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {dados.etapas_realizadas?.length > 0 && (
-        <div className="mt-6">
-          <div className="label mb-2">Etapas realizadas</div>
-          <div className="flex flex-wrap gap-2">
-            {dados.etapas_realizadas.map((e) => (
-              <Link key={e.id} to={`/etapa/${e.id}`} className="btn btn-ghost text-sm">{e.nome}</Link>
+      </Casca>
+    );
+  }
+  const cor = (pos) => (pos === 1 ? 'text-yellow-400' : pos === 2 ? 'text-slate-300' : pos === 3 ? 'text-amber-600' : 'text-slate-500');
+  const curto = (t) => t.replace(/\s*·.*$/, '');
+  return (
+    <Casca sub={`Ranking do campeonato${r.parcial ? ' · parcial' : ''}`}>
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-[11px] uppercase tracking-wide text-slate-400">
+              <th className="px-2 py-2 text-center">#</th>
+              <th className="px-2 py-2 text-left">Piloto</th>
+              {r.eventos.map((e) => <th key={e.slug} className="px-2 py-2 text-center whitespace-nowrap" title={e.titulo}>{dataBR(e.data).slice(0, 5)}</th>)}
+              <th className="px-2 py-2 text-center">Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {r.tabela.map((l) => (
+              <tr key={l.chave} className="border-t border-[#1d3252]">
+                <td className={`px-2 py-2 text-center font-extrabold tabular-nums ${cor(l.pos)}`}>{l.pos}</td>
+                <td className="px-2 py-2">
+                  {l.piloto_id ? (
+                    <Link to={`/piloto/${l.piloto_id}`} className="flex items-center gap-2 hover:text-white">
+                      <Avatar id={l.piloto_id} v={l.foto_v} nome={l.piloto} tam={28} />
+                      <span className="font-medium">{l.piloto}</span>
+                    </Link>
+                  ) : <span className="font-medium">{l.piloto}</span>}
+                </td>
+                {l.colunas.map((c) => (
+                  <td key={c.evento} className="px-2 py-2 text-center tabular-nums">
+                    {c.pos != null ? <span>{c.pos}º</span> : <span className="text-slate-500" title="não correu">{c.pontos}*</span>}
+                  </td>
+                ))}
+                <td className="px-2 py-2 text-center font-bold tabular-nums text-[color:var(--color-brand)]">{l.total}</td>
+              </tr>
             ))}
-          </div>
-        </div>
-      )}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 text-[11px] text-slate-400 space-y-1">
+        <p>{r.regra} * = não correu.</p>
+        {r.eventos.map((e) => (
+          <p key={e.slug}><b className="text-slate-300">{dataBR(e.data)} · {curto(e.titulo)}</b>: {e.n} classificados — {e.criterio}.</p>
+        ))}
+      </div>
     </Casca>
   );
 }

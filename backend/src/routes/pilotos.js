@@ -58,18 +58,33 @@ router.post('/', limiteCadastro, ah(async (req, res) => {
   res.status(201).json({ ok: true, piloto });
 }));
 
+// pública: a foto do piloto (data URL gravado pela ficha → imagem)
+router.get('/:id/foto', ah(async (req, res) => {
+  const { rows } = await q('SELECT foto FROM pilotos WHERE id = $1 AND ativo', [req.params.id]);
+  const m = /^data:(image\/[a-z]+);base64,(.+)$/.exec(rows[0]?.foto || '');
+  if (!m) return res.status(404).json({ erro: 'sem_foto' });
+  res.set('Content-Type', m[1]);
+  res.set('Cache-Control', 'public, max-age=86400'); // a URL leva ?v=<foto_em>: foto nova = URL nova
+  res.send(Buffer.from(m[2], 'base64'));
+}));
+
 // ---- admin ----
+// lista SEM a foto (é o campo pesado); a ficha inteira vem junto pra organização conferir
 router.get('/', exigirAdmin, ah(async (req, res) => {
   const { rows } = await q(
-    `SELECT p.*,
-       (SELECT COUNT(*) FROM resultados r WHERE r.piloto_id = p.id) AS etapas_correu
-     FROM pilotos p WHERE p.ativo ORDER BY p.nome`
+    `SELECT p.id, p.nome, p.apelido, p.whatsapp, p.data_nascimento, p.peso_kg, p.altura_cm, p.cidade, p.instagram,
+       p.emergencia_nome, p.emergencia_tel, p.tipo_sanguineo, p.camiseta, p.experiencia, p.empresa, p.indicado_por,
+       p.consentimento, p.ativo, p.criado_em, p.ficha_em, p.foto_em, (p.foto IS NOT NULL) AS tem_foto,
+       COALESCE(r.n, 0) AS etapas_correu
+     FROM pilotos p LEFT JOIN (SELECT piloto_id, COUNT(*) AS n FROM resultados GROUP BY piloto_id) r ON r.piloto_id = p.id
+     WHERE p.ativo ORDER BY p.nome`
   );
   res.json(rows);
 }));
 
 router.patch('/:id', exigirAdmin, ah(async (req, res) => {
-  const campos = ['nome', 'apelido', 'whatsapp', 'data_nascimento', 'peso_kg', 'experiencia', 'empresa', 'indicado_por', 'ativo'];
+  const campos = ['nome', 'apelido', 'whatsapp', 'data_nascimento', 'peso_kg', 'altura_cm', 'cidade', 'instagram', 'emergencia_nome',
+    'emergencia_tel', 'tipo_sanguineo', 'camiseta', 'experiencia', 'empresa', 'indicado_por', 'ativo'];
   const sets = [];
   const vals = [];
   for (const c of campos) {

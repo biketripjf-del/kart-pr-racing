@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Users, Flag, LogOut, Plus } from 'lucide-react';
 import { api, setToken, money } from '../api.js';
-import { Casca } from '../components/Marca.jsx';
+import { Casca, Avatar } from '../components/Marca.jsx';
+import { AdminMural, AdminSorteio } from '../components/AdminApp.jsx';
 
 export default function AdminPilotos() {
   const nav = useNavigate();
@@ -45,6 +46,8 @@ export default function AdminPilotos() {
 
   return (
     <Casca sub="Painel do organizador">
+      <AdminSorteio />
+      <AdminMural />
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold flex items-center gap-2"><Flag size={18} /> Etapas</h2>
         <button onClick={() => setNovaEtapa((v) => !v)} className="btn btn-ghost text-sm"><Plus size={16} /> Nova etapa</button>
@@ -78,19 +81,28 @@ export default function AdminPilotos() {
         {etapas.length === 0 && <div className="text-slate-400 text-sm">Nenhuma etapa ainda.</div>}
       </div>
 
-      <h2 className="text-lg font-semibold flex items-center gap-2 mb-3"><Users size={18} /> Pilotos inscritos ({pilotos.length})</h2>
+      <h2 className="text-lg font-semibold flex items-center gap-2 mb-3"><Users size={18} /> Pilotos ({pilotos.length}) · fichas preenchidas: {pilotos.filter((p) => p.ficha_em).length}</h2>
       <div className="card overflow-hidden">
         {pilotos.map((p) => (
-          <div key={p.id} className="px-4 py-3 border-b border-[#1d3252] last:border-0">
-            <div className="flex justify-between">
-              <span className="font-semibold">{p.nome} {p.apelido && <span className="text-slate-400 font-normal">"{p.apelido}"</span>}</span>
-              <span className="text-xs text-slate-400">{p.etapas_correu} et.</span>
-            </div>
-            <div className="text-xs text-slate-500 flex gap-3 flex-wrap mt-0.5">
-              {p.whatsapp && <span>{p.whatsapp}</span>}
-              {p.peso_kg && <span>{p.peso_kg} kg</span>}
-              {p.experiencia && <span>{p.experiencia}</span>}
-              {p.empresa && <span>· {p.empresa}</span>}
+          <div key={p.id} className="px-4 py-3 border-b border-[#1d3252] last:border-0 flex gap-3">
+            <Avatar id={p.id} v={p.tem_foto && p.foto_em ? new Date(p.foto_em).getTime() : null} nome={p.nome} tam={36} />
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between">
+                <span className="font-semibold">{p.nome} {p.apelido && <span className="text-slate-400 font-normal">"{p.apelido}"</span>}</span>
+                <span className={`text-[11px] ${p.ficha_em ? 'text-emerald-400' : 'text-amber-300'}`}>{p.ficha_em ? 'ficha ok' : 'sem ficha'}</span>
+              </div>
+              <div className="text-xs text-slate-500 flex gap-3 flex-wrap mt-0.5">
+                {p.whatsapp && <span>{p.whatsapp}</span>}
+                {p.data_nascimento && <span>nasc. {new Date(p.data_nascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>}
+                {p.peso_kg && <span>{p.peso_kg} kg</span>}
+                {p.altura_cm && <span>{p.altura_cm} cm</span>}
+                {p.experiencia && <span>{p.experiencia}</span>}
+                {p.camiseta && <span>camiseta {p.camiseta}</span>}
+                {p.empresa && <span>· {p.empresa}</span>}
+              </div>
+              {(p.emergencia_nome || p.tipo_sanguineo) && (
+                <div className="text-xs text-slate-500 mt-0.5">emergência: {p.emergencia_nome || '—'} {p.emergencia_tel || ''}{p.tipo_sanguineo ? ` · sangue ${p.tipo_sanguineo}` : ''}</div>
+              )}
             </div>
           </div>
         ))}
