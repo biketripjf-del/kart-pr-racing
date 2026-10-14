@@ -34,13 +34,15 @@ test('sorteio: cabeças de chave saem primeiro e se dividem entre A e B', () => 
   assert.deepEqual(new Set(o.slice(0, 4).map((x) => x.nome)), new Set(cab));
   assert.equal(o.slice(0, 4).filter((x) => x.grupo === 'A').length, 2);
   assert.equal(o.filter((x) => x.grupo === 'A').length, 14);
+  assert.deepEqual(montarOrdem([...NOMES].reverse(), 's', [...cab].reverse()), o, 'ordem do cadastro não muda o sorteio dos cabeças');
 });
 
-test('sorteio: número ímpar fecha 14/13', () => {
+test('sorteio: número ímpar fecha 14/13; 3 cabeças também fecham 14/14', () => {
   const o = montarOrdem(NOMES.slice(0, 27), 's');
-  const a = o.filter((x) => x.grupo === 'A').length;
-  assert.ok(a === 14 || a === 13);
-  assert.equal(o.length - a, 27 - a);
+  assert.equal(o.filter((x) => x.grupo === 'A').length, 14);
+  assert.equal(o.filter((x) => x.grupo === 'B').length, 13);
+  const c = montarOrdem(NOMES, 's', NOMES.slice(0, 3));
+  assert.equal(c.filter((x) => x.grupo === 'A').length, 14);
 });
 
 const T0 = Date.parse('2026-10-20T23:00:00Z');

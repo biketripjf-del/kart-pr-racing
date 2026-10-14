@@ -42,18 +42,8 @@ export function montarOrdem(participantes, semente, cabecas = []) {
   const setCab = new Set(cabecas);
   const cab = embaralhar(alfabetica(participantes.filter((n) => setCab.has(n))), rnd);
   const resto = embaralhar(alfabetica(participantes.filter((n) => !setCab.has(n))), rnd);
-  const ordem = [];
-  const conta = { A: 0, B: 0 };
-  const proximoGrupo = (i) => {
-    // alterna, mas nunca deixa um grupo passar da metade (arredondada pra cima)
-    const teto = Math.ceil(participantes.length / 2);
-    let g = GRUPOS[i % 2];
-    if (conta[g] >= teto) g = g === 'A' ? 'B' : 'A';
-    conta[g]++;
-    return g;
-  };
-  [...cab, ...resto].forEach((nome, i) => ordem.push({ nome, grupo: proximoGrupo(i), cabeca: setCab.has(nome) }));
-  return ordem;
+  // alternar pelo índice já fecha os grupos com no máximo 1 de diferença (28 → 14/14, 27 → 14/13)
+  return [...cab, ...resto].map((nome, i) => ({ nome, grupo: GRUPOS[i % 2], cabeca: setCab.has(nome) }));
 }
 
 // Fotografia do sorteio num instante. s = linha da tabela sorteios (ms já convertidos).
