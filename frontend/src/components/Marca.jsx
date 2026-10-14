@@ -1,42 +1,53 @@
 import { useEffect, useState } from 'react';
-import { Flag } from 'lucide-react';
-import { Link, NavLink } from 'react-router-dom';
+import { Home, Radio, Trophy, Users, LayoutGrid, UserRound, Shuffle, Swords, Camera, GraduationCap, Megaphone, ScrollText } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { getToken, setToken } from '../api.js';
 
-export function Marca({ sub }) {
+// cabeçalho na identidade Pacheco & Reis: faixa marinho, símbolo R do logo, letras expandidas como as do logo
+export function Marca() {
   return (
-    <div className="flex flex-col items-center text-center gap-1">
-      <Link to="/" className="flex items-center gap-2">
-        <Flag className="text-[color:var(--color-gold)]" size={22} />
-        <span style={{ fontFamily: 'var(--font-display)' }} className="text-3xl tracking-wide font-extrabold">
-          P&R <span className="text-[color:var(--color-brand)]">RACING CUP</span>
-        </span>
-        <Flag className="text-[color:var(--color-gold)]" size={22} />
-      </Link>
-      <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Pacheco &amp; Reis Advogados</div>
-      {sub && <div className="text-sm text-slate-300 mt-1">{sub}</div>}
-    </div>
+    <header className="relative overflow-hidden bg-[color:var(--color-brand-dark)] text-white" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-3 min-w-0">
+          <img src="/img/simbolo-branco.png" alt="" className="h-9 w-auto shrink-0" />
+          <span className="leading-none min-w-0">
+            <span className="display block text-[19px]">P&amp;R Racing Cup</span>
+            <span className="block mt-1 text-[10px] uppercase tracking-[0.22em] text-white/70 truncate">Pacheco &amp; Reis Advogados</span>
+          </span>
+        </Link>
+      </div>
+      <div className="h-[3px] bg-[color:var(--color-brand)]" />
+    </header>
   );
 }
 
-// menu comum a todas as páginas públicas — rola de lado no celular
-export const MENU = [
-  ['/', 'Início'], ['/ao-vivo', 'Ao vivo'], ['/sorteio', 'Sorteio'], ['/ranking', 'Ranking'], ['/pilotos', 'Pilotos'], ['/comparar', 'Comparar'],
-  ['/mural', 'Mural'], ['/regulamento', 'Regulamento'], ['/ficha', 'Minha ficha'],
+// navegação de app: 4 abas fixas embaixo + "Mais" (o resto)
+export const ABAS = [['/', 'Início', Home], ['/ao-vivo', 'Ao vivo', Radio], ['/ranking', 'Ranking', Trophy], ['/pilotos', 'Pilotos', Users], ['/mais', 'Mais', LayoutGrid]];
+export const MAIS = [
+  ['/ficha', 'Minha ficha', UserRound, 'Foto, contato, peso e altura'],
+  ['/sorteio', 'Sorteio dos grupos', Shuffle, 'Ao vivo, pra todo mundo ao mesmo tempo'],
+  ['/comparar', 'Comparar pilotos', Swords, 'Lado a lado e confronto direto'],
+  ['/midia', 'Fotos e vídeos', Camera, 'Suba o que você gravou no dia'],
+  ['/dicas', 'Dicas de pilotagem', GraduationCap, 'Traçado, freio, ultrapassagem'],
+  ['/mural', 'Mural', Megaphone, 'Avisos da organização'],
+  ['/regulamento', 'Regulamento', ScrollText, 'Formato, pontos e regras'],
 ];
+const EM_MAIS = MAIS.map(([to]) => to);
 
 export function Menu() {
+  const { pathname } = useLocation();
   return (
-    <nav className="mt-5 -mx-4 px-4 overflow-x-auto [scrollbar-width:none]">
-      <div className="flex gap-1.5 w-max mx-auto">
-        {MENU.map(([to, rot]) => (
-          <NavLink key={to} to={to} end={to === '/'}
-            className={({ isActive }) => `whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-semibold border ${isActive
-              ? 'bg-[color:var(--color-brand)] border-transparent text-white'
-              : 'border-[#1d3252] text-slate-300 hover:text-white'}`}>
-            {rot}
-          </NavLink>
-        ))}
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-[#e3e9f1]" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div className="max-w-xl mx-auto grid grid-cols-5">
+        {ABAS.map(([to, rot, Icone]) => {
+          const ativo = to === '/' ? pathname === '/' : pathname.startsWith(to) || (to === '/mais' && EM_MAIS.some((m) => pathname.startsWith(m)))
+            || (to === '/pilotos' && pathname.startsWith('/piloto/'));
+          return (
+            <Link key={to} to={to} className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold ${ativo ? 'text-brand' : 'text-tx3'}`}>
+              <Icone size={21} strokeWidth={ativo ? 2.4 : 1.8} />{rot}
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );
@@ -45,8 +56,8 @@ export function Menu() {
 export function Rodape() {
   const [org, setOrg] = useState(!!getToken());
   return (
-    <div className="mt-10 mb-6 flex flex-col items-center gap-2 text-xs text-slate-500">
-      <span>P&amp;R Racing Cup · Kartódromo Internacional de Volta Redonda</span>
+    <div className="mt-10 mb-6 flex flex-col items-center gap-2 text-xs text-tx3">
+      <span>P&amp;R Racing Cup · Pacheco &amp; Reis Advogados</span>
       {org && (
         <span className="text-[color:var(--color-gold)]">
           modo organizador · <Link to="/admin" className="underline">painel</Link> · <button className="underline" onClick={() => { setToken(null); setOrg(false); location.reload(); }}>sair</button>
@@ -58,14 +69,14 @@ export function Rodape() {
 
 export function Casca({ children, sub, largo }) {
   return (
-    <div className="min-h-screen">
-      <div className="checkers h-2 w-full" />
-      <div className={`${largo ? 'max-w-3xl' : 'max-w-xl'} mx-auto px-4 pt-8`}>
-        <Marca sub={sub} />
-        <Menu />
-        <div className="mt-6">{children}</div>
+    <div className="min-h-screen pb-24">
+      <Marca />
+      <div className={`${largo ? 'max-w-3xl' : 'max-w-xl'} mx-auto px-4 pt-5`}>
+        {sub && <h1 className="display text-[22px] leading-tight text-brand-dark mb-4">{sub}</h1>}
+        {children}
         <Rodape />
       </div>
+      <Menu />
     </div>
   );
 }
@@ -76,10 +87,10 @@ export function Avatar({ id, v, nome, tam = 40, className = '' }) {
   const estilo = { width: tam, height: tam, fontSize: Math.round(tam * 0.38) };
   if (id && v) {
     return <img src={`/api/pilotos/${id}/foto?v=${v}`} alt={nome} style={estilo} loading="lazy"
-      className={`rounded-full object-cover bg-[#13294a] shrink-0 ${className}`} />;
+      className={`rounded-full object-cover bg-[#e8eff7] shrink-0 ${className}`} />;
   }
   return (
-    <div style={estilo} className={`rounded-full bg-[#13294a] border border-[#24406b] text-slate-300 font-bold flex items-center justify-center shrink-0 ${className}`}>
+    <div style={estilo} className={`rounded-full bg-[#e8eff7] border border-[#d5dfeb] text-tx font-bold flex items-center justify-center shrink-0 ${className}`}>
       {iniciais}
     </div>
   );
@@ -111,9 +122,9 @@ export function Contador({ ms, grande }) {
   return (
     <div className="grid grid-cols-4 gap-2 text-center">
       {partes.map(([n, r]) => (
-        <div key={r} className={`rounded-xl bg-[#0a1930] border border-[#24406b] ${grande ? 'py-3' : 'py-2'}`}>
-          <div className={`${grande ? 'text-4xl' : 'text-3xl'} font-extrabold tabular-nums`} style={{ fontFamily: 'var(--font-display)' }}>{String(n).padStart(2, '0')}</div>
-          <div className="text-[11px] uppercase tracking-wide text-slate-400">{r}</div>
+        <div key={r} className={`rounded-xl bg-[#f3f6fa] border border-[#d5dfeb] ${grande ? 'py-3' : 'py-2'}`}>
+          <div className={`${grande ? 'text-4xl' : 'text-3xl'} display tabular-nums text-brand-dark`}>{String(n).padStart(2, '0')}</div>
+          <div className="text-[11px] uppercase tracking-wide text-tx2">{r}</div>
         </div>
       ))}
     </div>

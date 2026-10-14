@@ -6,9 +6,9 @@ import { Casca } from '../components/Marca.jsx';
 
 const INTERVALO_MS = 15000;
 const ROTULO = {
-  aguardando: { txt: 'aguardando', cls: 'bg-slate-700/60 text-slate-300' },
+  aguardando: { txt: 'aguardando', cls: 'bg-slate-200 text-tx2' },
   ao_vivo: { txt: 'na pista', cls: 'bg-red-600 text-white animate-pulse' },
-  provisorio: { txt: 'provisório', cls: 'bg-amber-500/90 text-black' },
+  provisorio: { txt: 'provisório', cls: 'bg-amber-500 text-white' },
   homologado: { txt: 'homologado', cls: 'bg-emerald-600 text-white' },
 };
 
@@ -32,13 +32,13 @@ function Tabela({ cab, linhas, destaque }) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-[11px] uppercase tracking-wide text-slate-400">
+          <tr className="text-[11px] uppercase tracking-wide text-tx2">
             {cab.map((c, i) => <th key={i} className={`px-2 py-2 font-medium ${i === 1 ? 'text-left' : 'text-center'}`}>{c}</th>)}
           </tr>
         </thead>
         <tbody>
           {linhas.map((l, i) => (
-            <tr key={i} className={`border-t border-[#1d3252] ${destaque?.(i) || ''}`}>
+            <tr key={i} className={`border-t border-[#e3e9f1] ${destaque?.(i) || ''}`}>
               {l.map((c, j) => <td key={j} className={`px-2 py-2 ${j === 1 ? 'text-left font-medium' : 'text-center tabular-nums'}`}>{c}</td>)}
             </tr>
           ))}
@@ -54,12 +54,12 @@ function CartaoSessao({ s, children, vazio }) {
       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
         <div className="font-semibold">{s.nome}</div>
         <div className="flex items-center gap-2">
-          {s.atualizado_em && <span className="text-[11px] text-slate-500">{horaBRT(s.atualizado_em)}</span>}
+          {s.atualizado_em && <span className="text-[11px] text-tx3">{horaBRT(s.atualizado_em)}</span>}
           <Selo status={s.status} />
         </div>
       </div>
-      {children || <div className="px-4 pb-4 text-sm text-slate-400">{vazio || 'Ainda não correu.'}</div>}
-      {s.observacoes && <div className="px-4 pb-3 text-xs text-amber-300/90">{s.observacoes}</div>}
+      {children || <div className="px-4 pb-4 text-sm text-tx2">{vazio || 'Ainda não correu.'}</div>}
+      {s.observacoes && <div className="px-4 pb-3 text-xs text-amber-700/90">{s.observacoes}</div>}
     </div>
   );
 }
@@ -71,8 +71,8 @@ function Resultado({ s, comPontos }) {
     l.ausente ? '—' : l.pos_oficial,
     <>
       {l.piloto}
-      {l.ausente && <span className="ml-2 text-[11px] text-red-300">não correu</span>}
-      {l.punicao && <span className="ml-2 text-[11px] text-amber-300">punido ({l.punicao === 'fim' ? 'fim de fila' : `${l.punicao === true ? 3 : l.punicao} pos.`}; cruzou em {l.pos_folha}º)</span>}
+      {l.ausente && <span className="ml-2 text-[11px] text-red-600">não correu</span>}
+      {l.punicao && <span className="ml-2 text-[11px] text-amber-700">punido ({l.punicao === 'fim' ? 'fim de fila' : `${l.punicao === true ? 3 : l.punicao} pos.`}; cruzou em {l.pos_folha}º)</span>}
     </>,
     l.kart ?? '—',
     volta(l.mv_ms),
@@ -90,9 +90,9 @@ function Grid({ s, titulo }) {
       <ol className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
         {s.grid.map((p, i) => (
           <li key={p} className="flex gap-2">
-            <span className="w-6 text-right text-slate-500 tabular-nums">{i + 1}º</span>
+            <span className="w-6 text-right text-tx3 tabular-nums">{i + 1}º</span>
             <span className="flex-1">{p}</span>
-            {volta_(p) != null && <span className="text-[11px] text-slate-400 tabular-nums">{volta(volta_(p))}</span>}
+            {volta_(p) != null && <span className="text-[11px] text-tx2 tabular-nums">{volta(volta_(p))}</span>}
           </li>
         ))}
       </ol>
@@ -108,13 +108,13 @@ function Corrida({ s }) {
   );
 }
 
-const pts = (b) => (b ? (b.ausente ? <span className="text-red-300">14</span> : b.pontos) : '—');
+const pts = (b) => (b ? (b.ausente ? <span className="text-red-600">14</span> : b.pontos) : '—');
 
 function Placar({ tabela, corte, titulo, nota, comGrupo }) {
   const linhas = tabela.map((l) => [
     l.correu ? l.pos : '—',
     <>{l.piloto}{l.cabeca && <span className="ml-1 text-[10px] text-[color:var(--color-gold)]">cabeça</span>}
-      {l.empate_sorteio && <span className="ml-1 text-[10px] text-amber-300">empate</span>}</>,
+      {l.empate_sorteio && <span className="ml-1 text-[10px] text-amber-700">empate</span>}</>,
     ...(comGrupo ? [l.grupo] : []),
     pts(l.b1), pts(l.b2), <b>{l.correu ? l.total : '—'}</b>, volta(l.mv_baterias_ms),
   ]);
@@ -122,22 +122,22 @@ function Placar({ tabela, corte, titulo, nota, comGrupo }) {
     <div className="card mt-4">
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <div className="font-semibold">{titulo}</div>
-        <span className="text-[11px] text-slate-400">menor soma vence</span>
+        <span className="text-[11px] text-tx2">menor soma vence</span>
       </div>
       <Tabela
         cab={['#', 'Piloto', ...(comGrupo ? ['Gr'] : []), 'B1', 'B2', 'Total', 'Melhor volta']}
         linhas={linhas}
         destaque={(i) => (corte && i === corte - 1 ? 'border-b-2 border-b-[color:var(--color-gold)]' : '')
-          + (tabela[i].vai_pra_final ? ' bg-[#13294a]' : '')}
+          + (tabela[i].vai_pra_final ? ' bg-[#e8eff7]' : '')}
       />
-      {nota && <div className="px-4 py-2 text-[11px] text-slate-400">{nota}</div>}
+      {nota && <div className="px-4 py-2 text-[11px] text-tx2">{nota}</div>}
     </div>
   );
 }
 
 function Grupo({ g, q }) {
   const grupo = q.grupos[g];
-  if (!grupo.pilotos.length) return <div className="card p-6 text-center text-slate-300 mt-4">Grupos saem do sorteio.</div>;
+  if (!grupo.pilotos.length) return <div className="card p-6 text-center text-tx mt-4">Grupos saem do sorteio.</div>;
   const naFinal = new Set(q.geral.tabela.filter((l) => l.vai_pra_final).map((l) => l.piloto));
   const tabela = grupo.tabela.map((l) => ({ ...l, vai_pra_final: naFinal.has(l.piloto) }));
   return (
@@ -169,8 +169,8 @@ function Final({ q }) {
           <div className="flex items-center gap-2 font-semibold"><Trophy className="text-[color:var(--color-gold)]" size={18} /> Pódio {final.campeao ? '' : '(provisório)'}</div>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
             {final.podio.map((p) => (
-              <div key={p.piloto} className={`rounded-xl p-3 ${p.pos === 1 ? 'bg-[color:var(--color-gold)] text-black' : 'bg-[#13294a]'}`}>
-                <div className="text-2xl font-extrabold" style={{ fontFamily: 'var(--font-display)' }}>{p.pos}º</div>
+              <div key={p.piloto} className={`rounded-xl p-3 ${p.pos === 1 ? 'bg-[color:var(--color-gold)] text-white' : 'bg-[#e8eff7]'}`}>
+                <div className="text-2xl font-extrabold display">{p.pos}º</div>
                 <div className="text-sm font-semibold leading-tight">{p.piloto}</div>
               </div>
             ))}
@@ -184,7 +184,7 @@ function Final({ q }) {
               <Tabela cab={['Larga', 'Piloto', 'Gr', 'Pts']}
                 linhas={final.grid.map((l) => [`${l.largada}º`, l.piloto, l.grupo, l.total])} />
               {!final.grid_pela_tomada && (
-                <div className="px-4 py-2 text-[11px] text-amber-300">Ordem pelos pontos — o grid de verdade sai da tomada de tempo da final.</div>
+                <div className="px-4 py-2 text-[11px] text-amber-700">Ordem pelos pontos — o grid de verdade sai da tomada de tempo da final.</div>
               )}
             </>
           )
@@ -208,7 +208,7 @@ function Dia({ dados }) {
       )}
       <div className="card mt-4 overflow-hidden">
         {Object.values(q.sessoes).map((s) => (
-          <div key={s.codigo} className={`flex items-center justify-between px-4 py-2.5 border-b border-[#1d3252] last:border-0 ${q.em_curso === s.codigo ? 'bg-[#13294a]' : ''}`}>
+          <div key={s.codigo} className={`flex items-center justify-between px-4 py-2.5 border-b border-[#e3e9f1] last:border-0 ${q.em_curso === s.codigo ? 'bg-[#e8eff7]' : ''}`}>
             <div className="flex items-center gap-2 text-sm">
               {q.em_curso === s.codigo && <Flag size={14} className="text-[color:var(--color-gold)]" />}
               {s.nome}
@@ -231,7 +231,7 @@ function Dia({ dados }) {
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
           {pilotos.map((p) => (
             <div key={p.nome} className="flex items-center gap-2">
-              {p.grupo && <span className="text-[10px] font-bold w-4 text-slate-400">{p.grupo}</span>}
+              {p.grupo && <span className="text-[10px] font-bold w-4 text-tx2">{p.grupo}</span>}
               <span>{p.nome}</span>
               {p.cabeca && <span className="text-[10px] text-[color:var(--color-gold)]">cabeça {p.cabeca}</span>}
             </div>
@@ -241,7 +241,7 @@ function Dia({ dados }) {
       {evento.regulamento && (
         <details className="card mt-4 p-4 text-sm">
           <summary className="cursor-pointer font-semibold">Regulamento</summary>
-          <div className="mt-3 whitespace-pre-line text-slate-300">{evento.regulamento}</div>
+          <div className="mt-3 whitespace-pre-line text-tx">{evento.regulamento}</div>
         </details>
       )}
     </>
@@ -265,7 +265,7 @@ export default function AoVivo() {
   }, [carregar]);
 
   if (!dados) {
-    return <Casca sub="Ao vivo"><div className="text-center text-slate-400 py-10">{erro ? 'Quadro ainda não aberto.' : 'Carregando…'}</div></Casca>;
+    return <Casca sub="Ao vivo"><div className="text-center text-tx2 py-10">{erro ? 'Quadro ainda não aberto.' : 'Carregando…'}</div></Casca>;
   }
   const q = dados.quadro;
   const abaPadrao = q.em_curso === 'FINAL' ? 'F' : (q.sessoes[q.em_curso]?.grupo || 'D');
@@ -275,21 +275,21 @@ export default function AoVivo() {
 
   return (
     <Casca sub={[dados.evento.titulo, dados.evento.subtitulo].filter(Boolean).join(' · ')}>
-      <div className="flex items-center justify-between text-xs text-slate-400">
+      <div className="flex items-center justify-between text-xs text-tx2">
         <span>
-          {q.em_curso ? <>Agora: <b className="text-slate-200">{q.sessoes[q.em_curso].nome}</b></> : 'Encerrado'}
+          {q.em_curso ? <>Agora: <b className="text-tx">{q.sessoes[q.em_curso].nome}</b></> : 'Encerrado'}
         </span>
-        <button onClick={carregar} className="flex items-center gap-1 hover:text-slate-200">
+        <button onClick={carregar} className="flex items-center gap-1 hover:text-tx">
           <RefreshCw size={12} /> {horaBRT(dados.atualizado_em)}
         </button>
       </div>
       {q.avisos.map((a) => (
-        <div key={a} className="mt-3 flex items-center gap-2 text-sm text-amber-300"><AlertTriangle size={14} />{a}</div>
+        <div key={a} className="mt-3 flex items-center gap-2 text-sm text-amber-700"><AlertTriangle size={14} />{a}</div>
       ))}
-      <div className="mt-4 grid grid-cols-5 gap-1 p-1 rounded-xl bg-[#0f1e33] border border-[#1d3252]">
+      <div className="mt-4 grid grid-cols-5 gap-1 p-1 rounded-xl bg-white border border-[#e3e9f1]">
         {abas.map(([k, t]) => (
           <button key={k} onClick={() => setAba(k)}
-            className={`py-2 rounded-lg text-[13px] font-semibold ${atual === k ? 'bg-[color:var(--color-brand)] text-white' : 'text-slate-300'}`}>{t}</button>
+            className={`py-2 rounded-lg text-[13px] font-semibold ${atual === k ? 'bg-[color:var(--color-brand)] text-white' : 'text-tx'}`}>{t}</button>
         ))}
       </div>
       {atual === 'D' && <Dia dados={dados} />}

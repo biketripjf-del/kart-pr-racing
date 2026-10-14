@@ -97,7 +97,7 @@ export default function AdminEtapa() {
     setRascunho((r) => ({ ...r, [pilotoId]: { ...r[pilotoId], [campo]: valor } }));
   }
 
-  if (!etapa) return <Casca sub="Etapa"><div className="text-center text-slate-400 py-10">Carregando…</div></Casca>;
+  if (!etapa) return <Casca sub="Etapa"><div className="text-center text-tx2 py-10">Carregando…</div></Casca>;
 
   const pagos = inscritos.filter((i) => i.pago).length;
 
@@ -106,8 +106,8 @@ export default function AdminEtapa() {
       <Link to="/admin" className="btn btn-ghost text-sm mb-4 inline-flex"><ChevronLeft size={16} /> Voltar</Link>
 
       <div className="card p-4 mb-4 flex justify-between items-center">
-        <div className="text-sm text-slate-300">
-          {inscritos.length} inscritos · <span className="text-emerald-400">{pagos} pagos</span> · {etapa.status}
+        <div className="text-sm text-tx">
+          {inscritos.length} inscritos · <span className="text-emerald-700">{pagos} pagos</span> · {etapa.status}
         </div>
         {etapa.status !== 'realizada' && (
           <button onClick={marcarRealizada} className="btn btn-gold text-sm">Fechar etapa</button>
@@ -131,7 +131,7 @@ export default function AdminEtapa() {
         {inscritos.map((i) => (
           <div key={i.piloto_id} className="card p-3">
             <div className="flex items-center justify-between mb-2">
-              <div className="font-semibold">{i.nome} {i.apelido && <span className="text-slate-400 font-normal">"{i.apelido}"</span>}</div>
+              <div className="font-semibold">{i.nome} {i.apelido && <span className="text-tx2 font-normal">"{i.apelido}"</span>}</div>
               <button
                 onClick={() => togglePagamento(i.piloto_id, !i.pago)}
                 className={`btn text-xs ${i.pago ? 'btn-gold' : 'btn-ghost'}`}>
@@ -153,7 +153,7 @@ export default function AdminEtapa() {
               </div>
             </div>
             <div className="flex items-center justify-between mt-2">
-              <label className="flex items-center gap-2 text-sm text-slate-300">
+              <label className="flex items-center gap-2 text-sm text-tx">
                 <input type="checkbox" checked={!!rascunho[i.piloto_id]?.pole} onChange={(e) => setR(i.piloto_id, 'pole', e.target.checked)} className="w-4 h-4 accent-[color:var(--color-brand)]" />
                 Pole
               </label>
@@ -161,7 +161,7 @@ export default function AdminEtapa() {
             </div>
           </div>
         ))}
-        {inscritos.length === 0 && <div className="text-slate-400 text-sm">Ninguém inscrito nesta etapa ainda.</div>}
+        {inscritos.length === 0 && <div className="text-tx2 text-sm">Ninguém inscrito nesta etapa ainda.</div>}
       </div>
     </Casca>
   );
