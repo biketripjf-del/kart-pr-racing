@@ -81,58 +81,81 @@ function Resultado({ s, comPontos }) {
   return <Tabela cab={cab} linhas={linhas} />;
 }
 
-function Grid({ grid, titulo }) {
-  if (!grid?.length) return null;
+function Grid({ s, titulo }) {
+  if (!s.grid?.length) return null;
+  const volta_ = (p) => s.tomada?.find((l) => l.piloto === p)?.mv_ms;
   return (
     <div className="px-4 pb-3">
       <div className="label mt-1">{titulo}</div>
       <ol className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-        {grid.map((p, i) => (
-          <li key={p} className="flex gap-2"><span className="w-6 text-right text-slate-500 tabular-nums">{i + 1}º</span>{p}</li>
+        {s.grid.map((p, i) => (
+          <li key={p} className="flex gap-2">
+            <span className="w-6 text-right text-slate-500 tabular-nums">{i + 1}º</span>
+            <span className="flex-1">{p}</span>
+            {volta_(p) != null && <span className="text-[11px] text-slate-400 tabular-nums">{volta(volta_(p))}</span>}
+          </li>
         ))}
       </ol>
     </div>
   );
 }
 
-function Grupo({ g, q }) {
-  const grupo = q.grupos[g];
-  const cls = q.sessoes[`CLASS_${g}`];
-  const b1 = q.sessoes[`B1_${g}`];
-  const b2 = q.sessoes[`B2_${g}`];
-  if (!grupo.pilotos.length) return <div className="card p-6 text-center text-slate-300 mt-4">Grupos saem do sorteio.</div>;
-  const placar = grupo.tabela.map((l) => [
-    l.pos,
+function Corrida({ s }) {
+  return (
+    <CartaoSessao s={s} vazio="Grid sai da tomada de tempo (melhor volta larga em 1º).">
+      {s.resultado.length ? <Resultado s={s} comPontos /> : <Grid s={s} titulo="Grid de largada · tomada de tempo" />}
+    </CartaoSessao>
+  );
+}
+
+const pts = (b) => (b ? (b.ausente ? <span className="text-red-300">14</span> : b.pontos) : '—');
+
+function Placar({ tabela, corte, titulo, nota, comGrupo }) {
+  const linhas = tabela.map((l) => [
+    l.correu ? l.pos : '—',
     <>{l.piloto}{l.cabeca && <span className="ml-1 text-[10px] text-[color:var(--color-gold)]">cabeça</span>}
       {l.empate_sorteio && <span className="ml-1 text-[10px] text-amber-300">empate</span>}</>,
-    l.b1 ? (l.b1.ausente ? '·1' : l.b1.pontos) : '—',
-    l.b2 ? (l.b2.ausente ? '·1' : l.b2.pontos) : '—',
-    <b>{l.total}</b>,
-    volta(l.mv_baterias_ms),
+    ...(comGrupo ? [l.grupo] : []),
+    pts(l.b1), pts(l.b2), <b>{l.correu ? l.total : '—'}</b>, volta(l.mv_baterias_ms),
   ]);
   return (
-    <>
-      <div className="card mt-4">
-        <div className="flex items-center justify-between px-4 pt-3 pb-1">
-          <div className="font-semibold">Placar do Grupo {g}</div>
-          <span className="text-[11px] text-slate-400">{grupo.definido ? 'definido' : grupo.parcial ? 'parcial' : 'antes da largada'}</span>
-        </div>
-        <Tabela
-          cab={['#', 'Piloto', 'B1', 'B2', 'Total', 'Melhor volta']}
-          linhas={placar}
-          destaque={(i) => (i === 6 && grupo.parcial !== undefined && (grupo.parcial || grupo.definido)
-            ? 'border-b-2 border-b-[color:var(--color-gold)]' : '') + (i < 7 && (grupo.parcial || grupo.definido) ? ' bg-[#13294a]' : '')}
-        />
-        <div className="px-4 py-2 text-[11px] text-slate-400">Linha dourada = corte. Os 7 de cima vão pra GRANDE FINAL. Desempate: melhor volta nas baterias.</div>
+    <div className="card mt-4">
+      <div className="flex items-center justify-between px-4 pt-3 pb-1">
+        <div className="font-semibold">{titulo}</div>
+        <span className="text-[11px] text-slate-400">menor soma vence</span>
       </div>
-      <CartaoSessao s={cls}><Resultado s={cls} /></CartaoSessao>
-      <CartaoSessao s={b1} vazio={b1.grid ? null : 'Grid sai da tomada de tempo.'}>
-        {b1.resultado.length ? <Resultado s={b1} comPontos /> : <Grid grid={b1.grid} titulo="Grid de largada" />}
-      </CartaoSessao>
-      <CartaoSessao s={b2} vazio="Grid = resultado da Bateria 1 invertido.">
-        {b2.resultado.length ? <Resultado s={b2} comPontos /> : <Grid grid={b2.grid} titulo="Grid de largada (invertido)" />}
-      </CartaoSessao>
+      <Tabela
+        cab={['#', 'Piloto', ...(comGrupo ? ['Gr'] : []), 'B1', 'B2', 'Total', 'Melhor volta']}
+        linhas={linhas}
+        destaque={(i) => (corte && i === corte - 1 ? 'border-b-2 border-b-[color:var(--color-gold)]' : '')
+          + (tabela[i].vai_pra_final ? ' bg-[#13294a]' : '')}
+      />
+      {nota && <div className="px-4 py-2 text-[11px] text-slate-400">{nota}</div>}
+    </div>
+  );
+}
+
+function Grupo({ g, q }) {
+  const grupo = q.grupos[g];
+  if (!grupo.pilotos.length) return <div className="card p-6 text-center text-slate-300 mt-4">Grupos saem do sorteio.</div>;
+  const naFinal = new Set(q.geral.tabela.filter((l) => l.vai_pra_final).map((l) => l.piloto));
+  const tabela = grupo.tabela.map((l) => ({ ...l, vai_pra_final: naFinal.has(l.piloto) }));
+  return (
+    <>
+      <Placar tabela={tabela} titulo={`Placar do Grupo ${g}`}
+        nota="Pontos = posição (1º = 1 ponto). Perdeu a bateria = 14. Fundo azul = hoje está entre os 14 da final (aba Geral)." />
+      <Corrida s={q.sessoes[`B1_${g}`]} />
+      <Corrida s={q.sessoes[`B2_${g}`]} />
     </>
+  );
+}
+
+function Geral({ q }) {
+  const { geral } = q;
+  return (
+    <Placar tabela={geral.tabela} corte={14} comGrupo
+      titulo={`Classificação geral${geral.definido ? '' : geral.parcial ? ' · parcial' : ''}`}
+      nota="Linha dourada = corte. Os 14 de cima correm a GRANDE FINAL. Desempate: melhor volta nas baterias." />
   );
 }
 
@@ -149,22 +172,31 @@ function Final({ q }) {
               <div key={p.piloto} className={`rounded-xl p-3 ${p.pos === 1 ? 'bg-[color:var(--color-gold)] text-black' : 'bg-[#13294a]'}`}>
                 <div className="text-2xl font-extrabold" style={{ fontFamily: 'var(--font-display)' }}>{p.pos}º</div>
                 <div className="text-sm font-semibold leading-tight">{p.piloto}</div>
+                <div className="text-[11px] opacity-80">{p.total} pts</div>
               </div>
             ))}
           </div>
         </div>
       )}
-      <CartaoSessao s={fin} vazio={null}>
-        {fin.resultado.length ? <Resultado s={fin} /> : (
-          final.grid.length ? (
-            <Tabela
-              cab={['Larga', 'Piloto', 'Grupo', 'Pts']}
-              linhas={final.grid.map((l) => [`${l.largada}º`, l.piloto, l.grupo, l.total])}
-            />
-          ) : <div className="px-4 pb-4 text-sm text-slate-400">Top-7 de cada grupo. Grid pela pontuação das baterias.</div>
-        )}
-        {!fin.resultado.length && final.grid.length > 0 && !final.definido && (
-          <div className="px-4 py-2 text-[11px] text-amber-300">Grid provisório — muda até as baterias 2 serem homologadas.</div>
+      {final.classificacao.length > 0 && (
+        <div className="card mt-4">
+          <div className="px-4 pt-3 pb-1 font-semibold">Campeonato · baterias + final</div>
+          <Tabela cab={['#', 'Piloto', 'Bat.', 'Final', 'Total']}
+            linhas={final.classificacao.map((l) => [l.pos, l.piloto, l.baterias, l.final ?? '—', <b>{l.total}</b>])} />
+          <div className="px-4 py-2 text-[11px] text-slate-400">Campeão = menor soma. Empate: quem chegou na frente na final.</div>
+        </div>
+      )}
+      <CartaoSessao s={fin} vazio="Os 14 melhores da classificação geral.">
+        {fin.resultado.length ? <Resultado s={fin} comPontos /> : (
+          final.grid.length > 0 && (
+            <>
+              <Tabela cab={['Larga', 'Piloto', 'Gr', 'Pts']}
+                linhas={final.grid.map((l) => [`${l.largada}º`, l.piloto, l.grupo, l.total])} />
+              {!final.grid_pela_tomada && (
+                <div className="px-4 py-2 text-[11px] text-amber-300">Ordem pelos pontos — o grid de verdade sai da tomada de tempo da final.</div>
+              )}
+            </>
+          )
         )}
       </CartaoSessao>
     </>
@@ -176,11 +208,11 @@ function Dia({ dados }) {
   const h = evento.horarios || {};
   return (
     <>
-      {(h.chegada || h.briefing || h.tomada) && (
+      {(h.saida || h.kart_abre || h.volta) && (
         <div className="card mt-4 p-4 grid grid-cols-3 text-center text-sm">
-          <div><div className="label">Chegada</div>{h.chegada || '—'}</div>
-          <div><div className="label">Briefing</div>{h.briefing || '—'}</div>
-          <div><div className="label">1ª tomada</div>{h.tomada || '—'}</div>
+          <div><div className="label">Saída de JF</div>{h.saida || '—'}</div>
+          <div><div className="label">Kart abre</div>{h.kart_abre || '—'}</div>
+          <div><div className="label">Volta</div>{h.volta || '—'}</div>
         </div>
       )}
       <div className="card mt-4 overflow-hidden">
@@ -246,8 +278,9 @@ export default function AoVivo() {
   }
   const q = dados.quadro;
   const abaPadrao = q.em_curso === 'FINAL' ? 'F' : (q.sessoes[q.em_curso]?.grupo || 'D');
-  const atual = aba || (q.sessoes.B1_A.status === 'aguardando' && q.sessoes.CLASS_A.status === 'aguardando' ? 'D' : abaPadrao);
-  const abas = [['D', 'Dia'], ['A', 'Grupo A'], ['B', 'Grupo B'], ['F', 'Final']];
+  const comecou = Object.values(q.sessoes).some((s) => s.resultado.length || s.tomada?.length);
+  const atual = aba || (comecou ? abaPadrao : 'D');
+  const abas = [['D', 'Dia'], ['A', 'Grupo A'], ['B', 'Grupo B'], ['G', 'Geral'], ['F', 'Final']];
 
   return (
     <Casca sub={[dados.evento.titulo, dados.evento.subtitulo].filter(Boolean).join(' · ')}>
@@ -262,14 +295,15 @@ export default function AoVivo() {
       {q.avisos.map((a) => (
         <div key={a} className="mt-3 flex items-center gap-2 text-sm text-amber-300"><AlertTriangle size={14} />{a}</div>
       ))}
-      <div className="mt-4 grid grid-cols-4 gap-1 p-1 rounded-xl bg-[#0f1e33] border border-[#1d3252]">
+      <div className="mt-4 grid grid-cols-5 gap-1 p-1 rounded-xl bg-[#0f1e33] border border-[#1d3252]">
         {abas.map(([k, t]) => (
           <button key={k} onClick={() => setAba(k)}
-            className={`py-2 rounded-lg text-sm font-semibold ${atual === k ? 'bg-[color:var(--color-brand)] text-white' : 'text-slate-300'}`}>{t}</button>
+            className={`py-2 rounded-lg text-[13px] font-semibold ${atual === k ? 'bg-[color:var(--color-brand)] text-white' : 'text-slate-300'}`}>{t}</button>
         ))}
       </div>
       {atual === 'D' && <Dia dados={dados} />}
       {(atual === 'A' || atual === 'B') && <Grupo g={atual} q={q} />}
+      {atual === 'G' && <Geral q={q} />}
       {atual === 'F' && <Final q={q} />}
     </Casca>
   );

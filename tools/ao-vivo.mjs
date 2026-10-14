@@ -5,7 +5,8 @@
 // Comandos:
 //   ver     <slug>                         imprime o quadro calculado (público, sem senha)
 //   evento  <slug> <estado.json>           cria/atualiza título, horários, pilotos e grupos
-//   sessao  <slug> <CODIGO> <folha.json> [status]   lança a folha (nomes da folha são resolvidos)
+//   tomada  <slug> <CODIGO> <folha.json>   lança a tomada de tempo da corrida (vira o grid)
+//   sessao  <slug> <CODIGO> <folha.json> [status]   lança o resultado da corrida (nomes da folha são resolvidos)
 //   status  <slug> <CODIGO> <status>       aguardando | ao_vivo | provisorio | homologado
 // folha.json: { "linhas": [{ "nome": "GABRIEL LANNA ALMEIDA", "pos": 1, "kart": 8, "mv": "00:48.485", "voltas": 18 }],
 //               "observacoes": "..." }  — campos opcionais por linha: ausente, punicao (3 | "fim").
@@ -43,17 +44,18 @@ function imprimir(d, foco) {
   for (const s of sess) {
     console.log(`\n[${s.codigo}] ${s.nome} — ${s.status}`);
     if (s.grid && !s.resultado.length) console.log('  grid:', s.grid.map((p, i) => `${i + 1}º ${p}`).join(' · '));
+    if (s.tomada?.length) console.log('  tomada:', s.tomada.map((l) => `${l.pos_oficial}º ${l.piloto} ${msParaVolta(l.mv_ms) ?? ''}`).join(' · '));
     for (const l of s.resultado) {
       console.log(`  ${String(l.ausente ? '—' : l.pos_oficial).padStart(2)}  ${l.piloto.padEnd(22)} kart ${String(l.kart ?? '-').padStart(2)}  ${msParaVolta(l.mv_ms) ?? '   —   '}${l.pontos != null ? `  ${l.pontos} pts` : ''}${l.punicao ? `  (punido, cruzou ${l.pos_folha}º)` : ''}${l.ausente ? '  NÃO CORREU' : ''}`);
     }
   }
-  for (const g of ['A', 'B']) {
-    const t = q.grupos[g].tabela.filter((l) => l.b1 || l.b2);
-    if (!t.length) continue;
-    console.log(`\nPlacar ${g} (${q.grupos[g].definido ? 'definido' : 'parcial'}):`);
-    t.forEach((l) => console.log(`  ${String(l.pos).padStart(2)} ${l.vai_pra_final ? '→' : ' '} ${l.piloto.padEnd(22)} ${String(l.total).padStart(2)} pts  mv ${msParaVolta(l.mv_baterias_ms) ?? '—'}${l.empate_sorteio ? '  EMPATE' : ''}`));
+  const t = q.geral.tabela.filter((l) => l.correu);
+  if (t.length) {
+    console.log(`\nClassificação geral — menor soma vence (${q.geral.definido ? 'definida' : 'parcial'}):`);
+    t.forEach((l) => console.log(`  ${String(l.pos).padStart(2)} ${l.vai_pra_final ? '→' : ' '} ${l.piloto.padEnd(22)} [${l.grupo}] ${String(l.total).padStart(2)} pts  mv ${msParaVolta(l.mv_baterias_ms) ?? '—'}${l.empate_sorteio ? '  EMPATE' : ''}`));
   }
-  if (q.final.grid.length) console.log(`\nGrid da final${q.final.definido ? '' : ' (provisório)'}: ${q.final.grid.map((l) => `${l.largada}º ${l.piloto}`).join(' · ')}`);
+  if (q.final.grid.length) console.log(`\nGrid da final${q.final.grid_pela_tomada ? ' (tomada de tempo)' : ' (provisório: ordem dos pontos até a tomada)'}: ${q.final.grid.map((l) => `${l.largada}º ${l.piloto}`).join(' · ')}`);
+  q.final.classificacao.forEach((l) => console.log(`  campeonato ${l.pos}º ${l.piloto}: ${l.baterias} + ${l.final ?? '—'} = ${l.total}`));
   if (q.melhor_volta_do_dia) console.log(`Melhor volta do dia: ${q.melhor_volta_do_dia.piloto} ${q.melhor_volta_do_dia.volta}`);
   q.avisos.forEach((a) => console.log(`⚠️  ${a}`));
 }
@@ -78,7 +80,7 @@ async function main() {
     const v = await http('GET', `/api/ao-vivo/${slug}`);
     return imprimir(v.json, codigo);
   }
-  if (cmd === 'sessao') {
+  if (cmd === 'sessao' || cmd === 'tomada') {
     const [codigo, arquivo, status] = resto;
     const folha = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
     const atual = await http('GET', `/api/ao-vivo/${slug}`);
@@ -96,7 +98,7 @@ async function main() {
       problemas.forEach((p) => console.error('  ' + p));
       process.exit(2);
     }
-    const corpo = { linhas, se_versao: atual.json.versao, ...(status ? { status } : {}),
+    const corpo = { ...(cmd === 'tomada' ? { tomada: linhas } : { linhas }), se_versao: atual.json.versao, ...(status && cmd === 'sessao' ? { status } : {}),
       ...(folha.observacoes !== undefined ? { observacoes: folha.observacoes } : {}) };
     const r = await http('PUT', `/api/ao-vivo/${slug}/sessao/${codigo}`, corpo, await token());
     console.log(r.status, JSON.stringify(r.json));

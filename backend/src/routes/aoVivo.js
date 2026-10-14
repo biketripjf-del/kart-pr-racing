@@ -47,11 +47,11 @@ router.put('/:slug', exigirAdmin, ah(async (req, res) => {
   res.json({ ok: true, versao: rows[0].versao });
 }));
 
-// admin: a folha de UMA sessão (o que sai da foto). `se_versao` evita sobrescrever lançamento alheio.
+// admin: a folha de UMA corrida (o que sai da foto) e/ou a tomada de tempo dela (`tomada`, dá o grid). `se_versao` evita sobrescrever lançamento alheio.
 router.put('/:slug/sessao/:codigo', exigirAdmin, ah(async (req, res) => {
   const { codigo, slug } = req.params;
   if (!CODIGOS.has(codigo)) return res.status(400).json({ erro: 'sessao_invalida' });
-  const { linhas, status, observacoes, foto, se_versao } = req.body || {};
+  const { linhas, tomada, status, observacoes, foto, se_versao } = req.body || {};
   if (status && !STATUS.includes(status)) return res.status(400).json({ erro: 'status_invalido' });
   const atual = await lerEstado(slug);
   if (!atual) return res.status(404).json({ erro: 'evento_nao_encontrado' });
@@ -60,11 +60,16 @@ router.put('/:slug/sessao/:codigo', exigirAdmin, ah(async (req, res) => {
   }
   const anterior = atual.estado.sessoes?.[codigo] || {};
   const novasLinhas = linhas ?? anterior.linhas ?? [];
-  const erros = validarSessao(novasLinhas, atual.estado.pilotos || []);
+  const novaTomada = tomada ?? anterior.tomada ?? [];
+  const erros = [
+    ...validarSessao(novasLinhas, atual.estado.pilotos || []),
+    ...validarSessao(novaTomada, atual.estado.pilotos || []).map((e) => `tomada de tempo: ${e}`),
+  ];
   if (erros.length) return res.status(400).json({ erro: 'folha_invalida', detalhes: erros });
   const sessao = {
     ...anterior,
     linhas: novasLinhas,
+    tomada: novaTomada,
     status: status || anterior.status || (novasLinhas.length ? 'provisorio' : 'aguardando'),
     ...(observacoes !== undefined ? { observacoes } : {}),
     ...(foto !== undefined ? { foto } : {}),
