@@ -12,8 +12,8 @@ function ColunaGrupo({ g, nomes, fotos, ultimo }) {
   return (
     <div className="card p-3">
       <div className="flex items-center justify-between">
-        <div className="font-extrabold text-xl" style={{ fontFamily: 'var(--font-display)' }}>GRUPO {g}</div>
-        <div className="text-xs text-slate-400 tabular-nums">{nomes.length}</div>
+        <div className="font-extrabold text-xl display">GRUPO {g}</div>
+        <div className="text-xs text-tx2 tabular-nums">{nomes.length}</div>
       </div>
       <div className="mt-2 space-y-1.5">
         {nomes.map((r) => (
@@ -70,12 +70,12 @@ export default function Sorteio() {
   }, [girando, agora, restantes]);
 
   const painel = admin ? <AdminSorteio naTela /> : null;
-  if (s === undefined) return <Casca sub="Sorteio dos grupos"><div className="text-center text-slate-400 py-10">Carregando…</div></Casca>;
+  if (s === undefined) return <Casca sub="Sorteio dos grupos"><div className="text-center text-tx2 py-10">Carregando…</div></Casca>;
   if (s === null) {
     return (
       <Casca sub="Sorteio dos grupos">
         {painel}
-        <div className="card p-8 text-center text-slate-300">
+        <div className="card p-8 text-center text-tx">
           <Shuffle className="mx-auto text-[color:var(--color-gold)] mb-3" size={40} />
           O sorteio dos grupos ainda não foi marcado. Quando for, a contagem aparece aqui e o sorteio roda sozinho, ao vivo, pra todo mundo ao mesmo tempo.
         </div>
@@ -91,9 +91,9 @@ export default function Sorteio() {
       {painel}
       {s.fase === 'contagem' && (
         <div className="card p-5">
-          <div className="text-center text-sm text-slate-300">Começa sozinho em <b>{quandoBRT(s.agendado_para)}</b> (horário de Brasília)</div>
+          <div className="text-center text-sm text-tx">Começa sozinho em <b>{quandoBRT(s.agendado_para)}</b> (horário de Brasília)</div>
           <div className="mt-4"><Contador grande ms={new Date(s.agendado_para).getTime() - agoraServ} /></div>
-          <div className="mt-4 text-center text-xs text-slate-400">
+          <div className="mt-4 text-center text-xs text-tx2">
             {s.inscritos} pilotos no pote · 1 nome a cada {Math.round(s.passo_ms / 1000)} s · alterna Grupo A e Grupo B
             {s.cabecas?.length ? ` · ${s.cabecas.length} cabeças de chave saem primeiro` : ' · sem cabeça de chave'}
           </div>
@@ -107,23 +107,23 @@ export default function Sorteio() {
 
       {(s.fase === 'revelando' || s.fase === 'fechando') && (
         <div className="card p-5 text-center">
-          <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-[0.2em] text-red-400 font-bold">
+          <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-[0.2em] text-red-600 font-bold">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> ao vivo · {revelados.length} de {s.total}
           </div>
           <div className="mt-4 min-h-[150px] flex flex-col items-center justify-center">
             {girando ? (
               <>
                 <div className="w-24 h-24 rounded-full border-4 border-dashed border-[color:var(--color-gold)] animate-spin" />
-                <div className="mt-3 text-lg text-slate-400 blur-[1px]">{tambor}</div>
+                <div className="mt-3 text-lg text-tx2 blur-[1px]">{tambor}</div>
               </>
             ) : ultimo ? (
               <div key={ultimo.nome} className="animate-[aparece_.6s_ease-out] flex flex-col items-center">
                 <Avatar id={ultimo.piloto_id} v={fotos[ultimo.piloto_id]} nome={ultimo.nome} tam={96} />
-                <div className="mt-3 text-2xl font-extrabold" style={{ fontFamily: 'var(--font-display)' }}>{ultimo.nome}</div>
-                <div className={`mt-1 px-3 py-0.5 rounded-full text-sm font-bold ${ultimo.grupo === 'A' ? 'bg-[color:var(--color-brand)] text-white' : 'bg-[color:var(--color-gold)] text-black'}`}>GRUPO {ultimo.grupo}</div>
+                <div className="mt-3 text-2xl font-extrabold display">{ultimo.nome}</div>
+                <div className={`mt-1 px-3 py-0.5 rounded-full text-sm font-bold ${ultimo.grupo === 'A' ? 'bg-[color:var(--color-brand)] text-white' : 'bg-[color:var(--color-gold)] text-white'}`}>GRUPO {ultimo.grupo}</div>
               </div>
             ) : (
-              <div className="text-slate-400">Primeiro nome saindo…</div>
+              <div className="text-tx2">Primeiro nome saindo…</div>
             )}
           </div>
         </div>
@@ -131,8 +131,8 @@ export default function Sorteio() {
 
       {s.fase === 'concluido' && (
         <div className="card p-4 text-center">
-          <div className="text-xl font-extrabold" style={{ fontFamily: 'var(--font-display)' }}>GRUPOS DEFINIDOS</div>
-          <div className="text-xs text-slate-400 mt-1">Já estão no quadro ao vivo.</div>
+          <div className="text-xl font-extrabold display">GRUPOS DEFINIDOS</div>
+          <div className="text-xs text-tx2 mt-1">Já estão no quadro ao vivo.</div>
         </div>
       )}
 
@@ -145,16 +145,16 @@ export default function Sorteio() {
 
       {s.semente && (
         <details className="card mt-4 p-4 text-sm">
-          <summary className="cursor-pointer font-semibold flex items-center gap-2"><ShieldCheck size={16} className="text-emerald-400" /> Como conferir este sorteio</summary>
-          <div className="mt-3 text-slate-300 space-y-2">
+          <summary className="cursor-pointer font-semibold flex items-center gap-2"><ShieldCheck size={16} className="text-emerald-700" /> Como conferir este sorteio</summary>
+          <div className="mt-3 text-tx space-y-2">
             <p>A ordem saiu de um embaralhamento com a semente abaixo, gerada na hora em que o sorteio começou e escondida até o último nome. Os nomes entram em ordem alfabética antes de embaralhar, e o 1º sorteado vai pro Grupo A, o 2º pro B, e assim por diante.</p>
             <p>Com a semente e a lista, qualquer pessoa refaz o sorteio e chega exatamente no mesmo resultado.</p>
-            <div className="font-mono text-xs bg-[#0a1930] border border-[#24406b] rounded-lg p-2 break-all">semente: {s.semente}</div>
+            <div className="font-mono text-xs bg-[#f3f6fa] border border-[#d5dfeb] rounded-lg p-2 break-all">semente: {s.semente}</div>
           </div>
         </details>
       )}
       {s.fase === 'revelando' && (
-        <div className="mt-3 flex items-center justify-center gap-1 text-[11px] text-slate-500"><Eye size={12} /> todo mundo está vendo o mesmo sorteio, na mesma hora</div>
+        <div className="mt-3 flex items-center justify-center gap-1 text-[11px] text-tx3"><Eye size={12} /> todo mundo está vendo o mesmo sorteio, na mesma hora</div>
       )}
     </Casca>
   );

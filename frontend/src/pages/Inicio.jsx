@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, MapPin, Clock, UserRound, Shuffle, Radio, Megaphone, Pin } from 'lucide-react';
 import { api } from '../api.js';
+import { InstalarApp } from '../components/Instalar.jsx';
 import { Casca, Contador, useAgora, dataBR, quandoBRT, diaDaSemana } from '../components/Marca.jsx';
 
 // contagem até a hora em que o kart abre (sex 23/10 15:00 BRT, no evento atual) — anda de segundo em segundo
@@ -33,14 +34,23 @@ export default function Inicio() {
 
   return (
     <Casca>
+      <InstalarApp compacto />
       {ev && (
-        <div className="card p-5">
-          <div className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--color-gold)] font-semibold">Próxima corrida</div>
-          <div className="mt-1 text-2xl font-extrabold leading-tight" style={{ fontFamily: 'var(--font-display)' }}>{ev.titulo}</div>
-          <div className="mt-3 space-y-1.5 text-sm text-slate-300">
-            <div className="flex items-center gap-2"><CalendarDays size={15} className="text-slate-400" />{diaDaSemana(ev.data)}, {dataBR(ev.data)}</div>
-            {ev.local && <div className="flex items-center gap-2"><MapPin size={15} className="text-slate-400" />{ev.local}</div>}
-            {h.kart_abre && <div className="flex items-center gap-2"><Clock size={15} className="text-slate-400" />Kart abre {h.kart_abre} · saída de JF {h.saida}</div>}
+        <div className="card overflow-hidden">
+          {/* capa: pista em vista aérea desenhada no formato do R do logo P&R (arte gerada, não é foto de evento) */}
+          <div className="relative h-56 bg-[color:var(--color-brand-dark)]">
+            <img src="/img/pista-r.webp" alt="" className="absolute inset-0 w-full h-full object-cover object-[50%_60%]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#032a52] via-[#032a52]/40 to-transparent" />
+            <div className="absolute bottom-0 inset-x-0 p-4 text-white">
+              <div className="text-[11px] uppercase tracking-[0.2em] text-white/80 font-semibold">Próxima corrida</div>
+              <div className="mt-1 text-[22px] leading-tight display">{ev.titulo}</div>
+            </div>
+          </div>
+          <div className="p-5 pt-4">
+          <div className="space-y-1.5 text-sm text-tx">
+            <div className="flex items-center gap-2"><CalendarDays size={15} className="text-tx2" />{diaDaSemana(ev.data)}, {dataBR(ev.data)}</div>
+            {ev.local && <div className="flex items-center gap-2"><MapPin size={15} className="text-tx2" />{ev.local}</div>}
+            {h.kart_abre && <div className="flex items-center gap-2"><Clock size={15} className="text-tx2" />Kart abre {h.kart_abre} · saída de JF {h.saida}</div>}
           </div>
           <Contagem data={ev.data} hora={h.kart_abre} />
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -52,18 +62,19 @@ export default function Inicio() {
               </>}
           </div>
           {sorteio && sorteio.fase === 'contagem' && (
-            <div className="mt-3 text-xs text-slate-400 text-center">Sorteio dos grupos ao vivo no app: <b className="text-slate-200">{quandoBRT(sorteio.agendado_para)}</b></div>
+            <div className="mt-3 text-xs text-tx2 text-center">Sorteio dos grupos ao vivo no app: <b className="text-tx">{quandoBRT(sorteio.agendado_para)}</b></div>
           )}
+          </div>
         </div>
       )}
 
       <div className="mt-6 flex items-center gap-2 font-semibold"><Megaphone size={17} className="text-[color:var(--color-gold)]" /> Mural</div>
-      {avisos.length === 0 && <div className="card mt-3 p-5 text-sm text-slate-400 text-center">Nenhum aviso ainda.</div>}
+      {avisos.length === 0 && <div className="card mt-3 p-5 text-sm text-tx2 text-center">Nenhum aviso ainda.</div>}
       {avisos.slice(0, 3).map((a) => (
         <div key={a.id} className="card mt-3 p-4">
           <div className="flex items-center gap-2 font-semibold">{a.fixado && <Pin size={14} className="text-[color:var(--color-gold)]" />}{a.titulo}</div>
-          <div className="mt-1 text-sm text-slate-300 whitespace-pre-line line-clamp-4">{a.texto}</div>
-          <div className="mt-2 text-[11px] text-slate-500">{quandoBRT(a.criado_em)}</div>
+          <div className="mt-1 text-sm text-tx whitespace-pre-line line-clamp-4">{a.texto}</div>
+          <div className="mt-2 text-[11px] text-tx3">{quandoBRT(a.criado_em)}</div>
         </div>
       ))}
       {avisos.length > 3 && <Link to="/mural" className="block mt-3 text-center text-sm text-[color:var(--color-brand)]">Ver todos os avisos</Link>}

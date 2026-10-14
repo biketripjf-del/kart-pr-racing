@@ -16,27 +16,27 @@ export function FichaLista() {
   const feitas = (dados?.pilotos || []).filter((p) => p.tem_ficha).length;
   return (
     <Casca sub="Ficha do piloto">
-      <div className="card p-4 text-sm text-slate-300">
+      <div className="card p-4 text-sm text-tx">
         Toque no seu nome e preencha a ficha: foto, contato, peso, altura e um contato de emergência.
         Telefone, peso, nascimento e saúde ficam só com a organização; no app aparecem só a foto e o nome.
       </div>
       <div className="mt-4 relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx3" />
         <input className="input pl-9" placeholder="Procure seu nome" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </div>
-      {dados && <div className="mt-2 text-xs text-slate-400">{feitas} de {dados.pilotos.length} fichas preenchidas</div>}
+      {dados && <div className="mt-2 text-xs text-tx2">{feitas} de {dados.pilotos.length} fichas preenchidas</div>}
       <div className="card mt-3 overflow-hidden">
-        {!dados && <div className="p-6 text-center text-slate-400">Carregando…</div>}
+        {!dados && <div className="p-6 text-center text-tx2">Carregando…</div>}
         {lista.map((p) => (
-          <Link key={p.id} to={`/ficha/${p.id}`} className="flex items-center gap-3 px-4 py-2.5 border-b border-[#1d3252] last:border-0 hover:bg-[#13294a]">
+          <Link key={p.id} to={`/ficha/${p.id}`} className="flex items-center gap-3 px-4 py-2.5 border-b border-[#e3e9f1] last:border-0 hover:bg-[#eef3f9]">
             <Avatar id={p.id} v={p.foto_v} nome={p.nome} tam={36} />
             <div className="flex-1 font-medium">{p.nome}</div>
             {p.tem_ficha
-              ? <span className="flex items-center gap-1 text-[11px] text-emerald-400"><CheckCircle2 size={14} /> preenchida</span>
-              : <span className="text-[11px] text-amber-300">falta preencher</span>}
+              ? <span className="flex items-center gap-1 text-[11px] text-emerald-700"><CheckCircle2 size={14} /> preenchida</span>
+              : <span className="text-[11px] text-amber-700">falta preencher</span>}
           </Link>
         ))}
-        {dados && !lista.length && <div className="p-6 text-center text-sm text-slate-400">Nenhum nome encontrado. Se o seu não está na lista, fale com a organização.</div>}
+        {dados && !lista.length && <div className="p-6 text-center text-sm text-tx2">Nenhum nome encontrado. Se o seu não está na lista, fale com a organização.</div>}
       </div>
     </Casca>
   );
@@ -72,7 +72,7 @@ function Campo({ rot, children, dica }) {
     <label className="block">
       <span className="label">{rot}</span>
       {children}
-      {dica && <span className="block mt-1 text-[11px] text-slate-500">{dica}</span>}
+      {dica && <span className="block mt-1 text-[11px] text-tx3">{dica}</span>}
     </label>
   );
 }
@@ -143,8 +143,8 @@ export function FichaForm() {
     } finally { setEnviando(false); }
   }
 
-  if (piloto === null) return <Casca sub="Ficha do piloto"><div className="text-center text-slate-400 py-10">Carregando…</div></Casca>;
-  if (piloto === false) return <Casca sub="Ficha do piloto"><div className="card p-6 text-center text-slate-300">Piloto não encontrado. <Link to="/ficha" className="text-[color:var(--color-brand)]">Voltar à lista</Link></div></Casca>;
+  if (piloto === null) return <Casca sub="Ficha do piloto"><div className="text-center text-tx2 py-10">Carregando…</div></Casca>;
+  if (piloto === false) return <Casca sub="Ficha do piloto"><div className="card p-6 text-center text-tx">Piloto não encontrado. <Link to="/ficha" className="text-[color:var(--color-brand)]">Voltar à lista</Link></div></Casca>;
 
   return (
     <Casca sub="Ficha do piloto">
@@ -157,13 +157,13 @@ export function FichaForm() {
           <button type="button" className="btn btn-ghost" onClick={() => arquivo.current?.click()}>
             <Camera size={16} /> {piloto.tem_foto || foto ? 'Trocar foto' : 'Colocar foto'}
           </button>
-          <div className="text-[11px] text-slate-500 text-center">Foto de rosto, de frente. Aparece no quadro, no sorteio e no ranking.</div>
+          <div className="text-[11px] text-tx3 text-center">Foto de rosto, de frente. Aparece no quadro, no sorteio e no ranking.</div>
         </div>
 
         {piloto.tem_ficha && (
           <div className="card p-4 border-amber-500/40">
-            <div className="flex items-center gap-2 text-sm font-semibold text-amber-300"><Lock size={15} /> Essa ficha já foi preenchida</div>
-            <div className="mt-1 text-xs text-slate-400">Para alterar, digite o WhatsApp que está cadastrado nela.</div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-amber-700"><Lock size={15} /> Essa ficha já foi preenchida</div>
+            <div className="mt-1 text-xs text-tx2">Para alterar, digite o WhatsApp que está cadastrado nela.</div>
             <div className="mt-3 flex gap-2">
               <input className="input" inputMode="tel" placeholder="(32) 99999-9999" value={confirmacao} onChange={(e) => setConfirmacao(M.telefone(e.target.value))} required />
               <button type="button" className="btn btn-ghost shrink-0" onClick={abrir}>{aberta ? 'Aberta' : 'Abrir'}</button>
@@ -181,7 +181,7 @@ export function FichaForm() {
             <Campo rot="Cidade"><input className="input" autoComplete="address-level2" placeholder="Juiz de Fora" value={f.cidade} onChange={set('cidade')} /></Campo>
           </div>
           <Campo rot="Instagram" dica="Pro videomaker marcar você."><div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">@</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-tx3">@</span>
             <input className="input pl-7" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="seuperfil" value={f.instagram} onChange={set('instagram', M.instagram)} />
           </div></Campo>
           <Campo rot="Escritório / empresa"><input className="input" value={f.empresa} onChange={set('empresa')} /></Campo>
@@ -192,11 +192,11 @@ export function FichaForm() {
           <div className="grid grid-cols-2 gap-3">
             <Campo rot="Peso" dica="Com a roupa de correr."><div className="relative">
               <input className="input pr-9" inputMode="decimal" placeholder="80,5" value={f.peso_kg} onChange={set('peso_kg', M.peso)} />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">kg</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-tx3 text-sm">kg</span>
             </div></Campo>
             <Campo rot="Altura" dica="Em centímetros."><div className="relative">
               <input className="input pr-9" inputMode="numeric" placeholder="175" value={f.altura_cm} onChange={set('altura_cm', M.altura)} />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">cm</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-tx3 text-sm">cm</span>
             </div></Campo>
           </div>
           <Campo rot="Experiência com kart">
@@ -222,7 +222,7 @@ export function FichaForm() {
           </Campo>
         </div>
 
-        <label className="card p-4 flex gap-3 items-start text-sm text-slate-300 cursor-pointer">
+        <label className="card p-4 flex gap-3 items-start text-sm text-tx cursor-pointer">
           <input type="checkbox" className="mt-1" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
           <span>Autorizo a organização a guardar esses dados para o campeonato e a mostrar no app minha foto, meu nome e meus resultados. Telefone, nascimento, peso, altura e dados de emergência ficam só com a organização.</span>
         </label>

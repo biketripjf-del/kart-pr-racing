@@ -12,9 +12,9 @@ export default function Mural() {
   if (admin) return <Casca sub="Mural de notícias e avisos"><AdminMural /></Casca>;
   return (
     <Casca sub="Mural de notícias e avisos">
-      {!avisos && <div className="text-center text-slate-400 py-10">Carregando…</div>}
+      {!avisos && <div className="text-center text-tx2 py-10">Carregando…</div>}
       {avisos && !avisos.length && (
-        <div className="card p-8 text-center text-slate-300">
+        <div className="card p-8 text-center text-tx">
           <Megaphone className="mx-auto text-[color:var(--color-gold)] mb-3" size={36} />
           Nenhum aviso ainda.
         </div>
@@ -22,8 +22,8 @@ export default function Mural() {
       {avisos?.map((a) => (
         <div key={a.id} className={`card mt-3 p-4 ${a.fixado ? 'border-[color:var(--color-gold)]/60' : ''}`}>
           <div className="flex items-center gap-2 font-semibold">{a.fixado && <Pin size={14} className="text-[color:var(--color-gold)]" />}{a.titulo}</div>
-          <div className="mt-2 text-sm text-slate-300 whitespace-pre-line">{a.texto}</div>
-          <div className="mt-2 text-[11px] text-slate-500">{quandoBRT(a.criado_em)}</div>
+          <div className="mt-2 text-sm text-tx whitespace-pre-line">{a.texto}</div>
+          <div className="mt-2 text-[11px] text-tx3">{quandoBRT(a.criado_em)}</div>
         </div>
       ))}
     </Casca>

@@ -39,7 +39,7 @@ function confronto(a, b) {
 function Celula({ valor, destaque, fmt }) {
   return (
     <td className={`px-1 py-2 text-center tabular-nums ${destaque ? 'text-[color:var(--color-gold)] font-extrabold' : ''}`}>
-      {valor == null ? <span className="text-slate-600">—</span> : (fmt ? fmt(valor) : valor)}
+      {valor == null ? <span className="text-tx3">—</span> : (fmt ? fmt(valor) : valor)}
     </td>
   );
 }
@@ -74,7 +74,7 @@ export default function Comparar() {
   return (
     <Casca sub="Comparar pilotos" largo>
       <div className="card p-4">
-        <div className="text-sm text-slate-300">Escolha de 2 a {MAX} pilotos. O melhor número de cada linha fica em dourado.</div>
+        <div className="text-sm text-tx">Escolha de 2 a {MAX} pilotos. O melhor número de cada linha fica em dourado.</div>
         <div className="mt-3 flex flex-wrap gap-2">
           {ids.map((id) => {
             const p = (todos || []).find((x) => x.piloto_id === id) || dados[id]?.piloto;
@@ -88,25 +88,25 @@ export default function Comparar() {
         {ids.length < MAX && (
           <>
             <div className="mt-3 relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx3" />
               <input className="input pl-9" placeholder={ids.length ? 'Adicionar outro piloto' : 'Procure um piloto'} value={busca} onChange={(e) => setBusca(e.target.value)} />
             </div>
-            <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-[#1d3252]">
-              {!todos && <div className="p-4 text-center text-sm text-slate-400">Carregando…</div>}
+            <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-[#e3e9f1]">
+              {!todos && <div className="p-4 text-center text-sm text-tx2">Carregando…</div>}
               {opcoes.map((p) => (
-                <button key={p.piloto_id} onClick={() => trocar(p.piloto_id)} className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm border-b border-[#1d3252] last:border-0 hover:bg-[#13294a]">
+                <button key={p.piloto_id} onClick={() => trocar(p.piloto_id)} className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm border-b border-[#e3e9f1] last:border-0 hover:bg-[#eef3f9]">
                   <Avatar id={p.piloto_id} v={p.foto_v} nome={p.nome} tam={28} />
                   <span className="flex-1">{p.nome}</span>
-                  {p.ranking && <span className="text-[11px] text-slate-500">{p.ranking}º</span>}
+                  {p.ranking && <span className="text-[11px] text-tx3">{p.ranking}º</span>}
                 </button>
               ))}
-              {todos && !opcoes.length && <div className="p-4 text-center text-sm text-slate-400">Ninguém com esse nome.</div>}
+              {todos && !opcoes.length && <div className="p-4 text-center text-sm text-tx2">Ninguém com esse nome.</div>}
             </div>
           </>
         )}
       </div>
 
-      {ids.length >= 2 && !prontos && <div className="text-center text-slate-400 py-8">Carregando…</div>}
+      {ids.length >= 2 && !prontos && <div className="text-center text-tx2 py-8">Carregando…</div>}
 
       {prontos && (
         <>
@@ -114,7 +114,7 @@ export default function Comparar() {
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  <th className="sticky left-0 bg-[#0f1e33] w-[88px]" />
+                  <th className="sticky left-0 bg-white w-[88px]" />
                   {sel.map((d) => (
                     <th key={d.piloto.id} className="px-1 pt-3 pb-2 min-w-[64px] align-top">
                       <Link to={`/piloto/${d.piloto.id}`} className="flex flex-col items-center gap-1">
@@ -130,8 +130,8 @@ export default function Comparar() {
                   const vs = sel.map(ler);
                   const best = melhorDe(vs, sentido);
                   return (
-                    <tr key={rot} className="border-t border-[#1d3252]">
-                      <td className="sticky left-0 bg-[#0f1e33] pl-3 pr-1 py-2 text-xs text-slate-300">{rot}</td>
+                    <tr key={rot} className="border-t border-[#e3e9f1]">
+                      <td className="sticky left-0 bg-white pl-3 pr-1 py-2 text-xs text-tx">{rot}</td>
                       {vs.map((v, i) => <Celula key={i} valor={v} destaque={best != null && v === best} fmt={fmt} />)}
                     </tr>
                   );
@@ -140,8 +140,8 @@ export default function Comparar() {
                   const vs = sel.map((d) => d.numeros.melhor_volta_por_tracado[t]?.mv_ms ?? null);
                   const best = melhorDe(vs, 'menor');
                   return (
-                    <tr key={t} className="border-t border-[#1d3252]">
-                      <td className="sticky left-0 bg-[#0f1e33] pl-3 pr-1 py-2 text-xs text-slate-300">Melhor volta<div className="text-[11px] text-slate-500">{t}</div></td>
+                    <tr key={t} className="border-t border-[#e3e9f1]">
+                      <td className="sticky left-0 bg-white pl-3 pr-1 py-2 text-xs text-tx">Melhor volta<div className="text-[11px] text-tx3">{t}</div></td>
                       {vs.map((v, i) => <Celula key={i} valor={v} destaque={best != null && v === best} fmt={volta} />)}
                     </tr>
                   );
@@ -149,10 +149,10 @@ export default function Comparar() {
               </tbody>
             </table>
           </div>
-          {sel.some((d) => d.ranking?.parcial) && <div className="mt-2 text-[11px] text-slate-500 text-center">Ranking parcial: ainda falta lançar corrida.</div>}
+          {sel.some((d) => d.ranking?.parcial) && <div className="mt-2 text-[11px] text-tx3 text-center">Ranking parcial: ainda falta lançar corrida.</div>}
 
           <div className="mt-6 flex items-center gap-2 font-semibold"><Swords size={17} className="text-[color:var(--color-gold)]" /> Confronto direto</div>
-          <div className="text-xs text-slate-400 mt-1">Nas corridas em que os dois terminaram, quem chegou na frente.</div>
+          <div className="text-xs text-tx2 mt-1">Nas corridas em que os dois terminaram, quem chegou na frente.</div>
           {pares.map(({ a, b, juntas, va, vb }) => (
             <div key={`${a.piloto.id}-${b.piloto.id}`} className="card mt-3 p-4">
               <div className="flex items-center justify-between gap-2">
@@ -161,7 +161,7 @@ export default function Comparar() {
                   <span className="truncate text-sm font-semibold">{a.piloto.nome}</span>
                   {va > vb && <Crown size={14} className="text-[color:var(--color-gold)] shrink-0" />}
                 </div>
-                <div className="text-2xl font-extrabold tabular-nums shrink-0" style={{ fontFamily: 'var(--font-display)' }}>{va} <span className="text-slate-500">x</span> {vb}</div>
+                <div className="text-2xl font-extrabold tabular-nums shrink-0 display">{va} <span className="text-tx3">x</span> {vb}</div>
                 <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
                   {vb > va && <Crown size={14} className="text-[color:var(--color-gold)] shrink-0" />}
                   <span className="truncate text-sm font-semibold text-right">{b.piloto.nome}</span>
@@ -169,24 +169,24 @@ export default function Comparar() {
                 </div>
               </div>
               {juntas.length === 0
-                ? <div className="mt-2 text-xs text-slate-500 text-center">Ainda não correram juntos.</div>
+                ? <div className="mt-2 text-xs text-tx3 text-center">Ainda não correram juntos.</div>
                 : (
                   <div className="mt-3 space-y-1">
                     {juntas.map(({ corrida: c, a: pa, b: pb }) => (
                       <div key={`${c.evento}|${c.sessao}`} className="flex items-center text-xs">
-                        <span className={`w-10 text-left tabular-nums ${pa < pb ? 'text-[color:var(--color-gold)] font-bold' : 'text-slate-400'}`}>{pa}º</span>
-                        <span className="flex-1 text-center text-slate-400 truncate">{c.sessao_nome} · {dataBR(c.data)}</span>
-                        <span className={`w-10 text-right tabular-nums ${pb < pa ? 'text-[color:var(--color-gold)] font-bold' : 'text-slate-400'}`}>{pb}º</span>
+                        <span className={`w-10 text-left tabular-nums ${pa < pb ? 'text-[color:var(--color-gold)] font-bold' : 'text-tx2'}`}>{pa}º</span>
+                        <span className="flex-1 text-center text-tx2 truncate">{c.sessao_nome} · {dataBR(c.data)}</span>
+                        <span className={`w-10 text-right tabular-nums ${pb < pa ? 'text-[color:var(--color-gold)] font-bold' : 'text-tx2'}`}>{pb}º</span>
                       </div>
                     ))}
                   </div>
                 )}
             </div>
           ))}
-          <div className="mt-4 text-[11px] text-slate-500 text-center">Peso, altura e idade ficam fora: são dados da ficha que só a organização vê.</div>
+          <div className="mt-4 text-[11px] text-tx3 text-center">Peso, altura e idade ficam fora: são dados da ficha que só a organização vê.</div>
         </>
       )}
-      {ids.length < 2 && todos && <div className="mt-4 text-center text-sm text-slate-500">Escolha pelo menos 2 pilotos.</div>}
+      {ids.length < 2 && todos && <div className="mt-4 text-center text-sm text-tx3">Escolha pelo menos 2 pilotos.</div>}
     </Casca>
   );
 }
