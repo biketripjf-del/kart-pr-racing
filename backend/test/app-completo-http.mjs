@@ -66,6 +66,10 @@ ok((await http('POST', `/api/ficha/${idP2}`, { ...ficha, apelido: 'Hacker' })).s
 ok((await http('POST', `/api/ficha/${idP2}`, { ...ficha, apelido: 'Hacker', confirmacao: '32 97777-1111' })).status === 403, 'WhatsApp errado = 403');
 ok((await http('POST', `/api/ficha/${idP2}`, { ...ficha, apelido: 'Doisão', foto: undefined, confirmacao: '5532988881111' })).status === 200,
   'mesmo WhatsApp escrito de outro jeito (+55, sem máscara) libera a edição');
+ok((await http('POST', `/api/ficha/${idP2}/abrir`, { confirmacao: '32 97777-1111' })).status === 403, 'abrir a ficha com WhatsApp errado = 403');
+const aberta = await http('POST', `/api/ficha/${idP2}/abrir`, { confirmacao: '32988881111' });
+ok(aberta.status === 200 && aberta.json.altura_cm === 178 && aberta.json.data_nascimento === '1990-05-01' && !('foto' in aberta.json),
+  'abrir a ficha com o WhatsApp certo devolve os dados pra editar (sem a foto)');
 const pub = await http('GET', `/api/ficha/${idP2}`);
 ok(pub.json.tem_ficha && pub.json.apelido === 'Doisão' && pub.json.tem_foto, 'ficha pública: apelido novo e a foto ficou (edição sem foto não apaga)');
 ok(!('whatsapp' in pub.json) && !('peso_kg' in pub.json) && !('data_nascimento' in pub.json), 'ficha pública não traz dado pessoal');
@@ -121,6 +125,11 @@ await http('PUT', '/api/ao-vivo/corridas-17-07', {
 const vj = await http('POST', '/api/ao-vivo/corridas-17-07/vincular', {}, token);
 ok(vj.json.vinculados.find((x) => x.nome === 'Brunner').piloto_id === 1 && vj.json.vinculados.find((x) => x.nome === 'Piloto 2').piloto_id === idP2,
   'evento de julho: Brunner e Piloto 2 casam com os MESMOS cadastros da 3ª Copa');
+ok((await http('PUT', '/api/ao-vivo/corridas-17-07/corrida/C2', { linhas: linhas(['Fulano']) }, token)).status === 400, 'folha de histórico com nome fora da lista = 400');
+ok((await http('PUT', '/api/ao-vivo/copa-3/corrida/C2', { linhas: [] }, token)).status === 400, 'folha de histórico em evento que não é de corridas = 400');
+const c2 = await http('PUT', '/api/ao-vivo/corridas-17-07/corrida/C2', { linhas: linhas(['Piloto 2', 'Brunner']) }, token);
+ok(c2.status === 200, 'lança a folha que faltava numa corrida do histórico');
+await http('PUT', '/api/ao-vivo/corridas-17-07/corrida/C2', { linhas: linhas(['Piloto 2']) }, token);
 const rk = await http('GET', '/api/historico/ranking');
 ok(rk.status === 200 && rk.json.eventos.length === 1 && rk.json.eventos[0].slug === 'corridas-17-07', 'ranking: só o evento que já correu (copa-3 ainda vazia)');
 ok(rk.json.tabela[0].piloto === 'Só de julho' && rk.json.tabela.length === 3, 'ranking: vencedor de julho na frente');

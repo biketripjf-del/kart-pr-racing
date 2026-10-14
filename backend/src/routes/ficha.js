@@ -72,6 +72,19 @@ router.get('/:id', ah(async (req, res) => {
   res.json({ ...rows[0], foto_v: rows[0].foto_em ? new Date(rows[0].foto_em).getTime() : null });
 }));
 
+// pública: abre a ficha já preenchida pra editar — só com o WhatsApp dela
+router.post('/:id/abrir', limite, ah(async (req, res) => {
+  const { rows } = await q(
+    `SELECT id, nome, apelido, whatsapp, data_nascimento, peso_kg, altura_cm, cidade, instagram, emergencia_nome, emergencia_tel,
+            tipo_sanguineo, camiseta, experiencia, empresa, ficha_em FROM pilotos WHERE id = $1 AND ativo`, [req.params.id]
+  );
+  const p = rows[0];
+  if (!p) return res.status(404).json({ erro: 'nao_encontrado' });
+  if (!p.ficha_em || !mesmoTelefone(req.body?.confirmacao, p.whatsapp)) return res.status(403).json({ erro: 'confirme_o_whatsapp' });
+  const { ficha_em, ...ficha } = p;
+  res.json({ ...ficha, data_nascimento: p.data_nascimento ? new Date(p.data_nascimento).toISOString().slice(0, 10) : '' });
+}));
+
 // pública: preencher/editar a ficha
 router.post('/:id', limite, ah(async (req, res) => {
   const { error, value: v } = schema.validate(req.body || {}, { stripUnknown: true });

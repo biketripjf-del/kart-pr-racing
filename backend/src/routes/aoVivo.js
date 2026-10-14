@@ -93,6 +93,28 @@ router.post('/:slug/vincular', exigirAdmin, ah(async (req, res) => {
   res.json({ ok: true, versao: rows[0].versao, vinculados: relatorio });
 }));
 
+// admin: folha de uma corrida num evento formato 'corridas' (histórico, ex.: 17/07)
+router.put('/:slug/corrida/:codigo', exigirAdmin, ah(async (req, res) => {
+  const atual = await lerEstado(req.params.slug);
+  if (!atual) return res.status(404).json({ erro: 'evento_nao_encontrado' });
+  if (atual.estado.formato !== 'corridas') return res.status(400).json({ erro: 'evento_nao_e_de_corridas' });
+  const { linhas, observacoes, tracado, se_versao } = req.body || {};
+  if (se_versao != null && Number(se_versao) !== atual.versao) return res.status(409).json({ erro: 'versao_mudou', versao: atual.versao });
+  const erros = validarSessao(linhas || [], atual.estado.pilotos || []);
+  if (erros.length) return res.status(400).json({ erro: 'folha_invalida', detalhes: erros });
+  const corridas = atual.estado.corridas || [];
+  if (!corridas.some((c) => c.codigo === req.params.codigo)) return res.status(404).json({ erro: 'corrida_nao_encontrada' });
+  const novas = corridas.map((c) => (c.codigo === req.params.codigo ? {
+    ...c, linhas, ...(observacoes !== undefined ? { observacoes } : {}), ...(tracado !== undefined ? { tracado } : {}),
+  } : c));
+  const { rows } = await q(
+    `UPDATE ao_vivo SET estado = $2::jsonb, versao = versao + 1, atualizado_em = now() WHERE slug = $1 AND versao = $3 RETURNING versao`,
+    [req.params.slug, JSON.stringify({ ...atual.estado, corridas: novas }), atual.versao]
+  );
+  if (!rows[0]) return res.status(409).json({ erro: 'versao_mudou' });
+  res.json({ ok: true, versao: rows[0].versao });
+}));
+
 // admin: a folha de UMA corrida (o que sai da foto) e/ou a tomada de tempo dela (`tomada`, dá o grid). `se_versao` evita sobrescrever lançamento alheio.
 router.put('/:slug/sessao/:codigo', exigirAdmin, ah(async (req, res) => {
   const { codigo, slug } = req.params;

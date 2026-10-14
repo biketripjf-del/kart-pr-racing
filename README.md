@@ -38,6 +38,14 @@ cd frontend && npm run dev     # UI na 5173 (proxy /api -> 4000)
 3. Build: `npm run build` · Start: `npm start` (o start roda as migrations e sobe).
 4. Rode o seed uma vez para criar o admin + etapa 1: `npm run seed`.
 
+## App da 3ª Copa (out/2026)
+- `/` início (próxima corrida + mural) · `/ficha` ficha do piloto com foto (editar exige o WhatsApp cadastrado)
+- `/sorteio` sorteio dos grupos AO VIVO: marcado pelo admin, começa sozinho, 1 nome a cada 5 s, semente publicada no fim
+- `/ao-vivo` quadro do dia · `/ranking` · `/pilotos` · `/piloto/:id` · `/mural` · `/regulamento`
+- Histórico e ranking saem dos eventos (`ao_vivo`); `pilotos.id` liga o mesmo piloto entre eventos
+  (`POST /api/ao-vivo/:slug/vincular`). `/api/ranking` (pontos F1 por etapa) é o modelo antigo, sem tela.
+- Ferramenta: `tools/ao-vivo.mjs` (senha do admin por stdin).
+
 ## Rotas
 - `/` inscrição pública · `/ranking` classificação · `/etapa/:id` resultado de uma etapa
 - `/admin` painel do organizador (login em `/admin/login`)
