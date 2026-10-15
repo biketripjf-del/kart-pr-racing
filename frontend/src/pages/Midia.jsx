@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Upload, Play, X, Download, Image as ImgIcon, Film, EyeOff } from 'lucide-react';
-import { api } from '../api.js';
+import { api, getEu } from '../api.js';
 import { Casca } from '../components/Marca.jsx';
 import { useAdmin } from '../components/AdminApp.jsx';
 
@@ -74,7 +74,12 @@ export default function Midia() {
   const input = useRef(null);
 
   const carregar = () => api.get('/midia').then((r) => setLista(r.data)).catch(() => setLista([]));
-  useEffect(() => { carregar(); api.get('/ficha/lista').then((r) => setPilotos(r.data.pilotos)).catch(() => {}); }, []);
+  useEffect(() => {
+    carregar();
+    api.get('/ficha/lista').then((r) => setPilotos(r.data.pilotos)).catch(() => {});
+    // quem abriu o link pessoal já vem escolhido
+    if (getEu()) api.get('/ficha/eu').then((r) => setAutor({ id: r.data.id, nome: r.data.nome_evento })).catch(() => {});
+  }, []);
 
   function escolherAutor(v) {
     const a = v === 'outro' ? { id: null, nome: '' } : (() => { const p = pilotos.find((x) => String(x.id) === v); return p ? { id: p.id, nome: p.nome } : null; })();
