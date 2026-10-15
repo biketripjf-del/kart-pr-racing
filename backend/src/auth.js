@@ -24,3 +24,10 @@ export function exigirAdmin(req, res, next) {
     return res.status(401).json({ erro: 'token_invalido' });
   }
 }
+
+// login de organizador OPCIONAL: true se veio um Bearer válido; não responde nada (rotas que aceitam visitante)
+export function ehAdmin(req) {
+  const h = req.headers.authorization || '';
+  if (!h.startsWith('Bearer ')) return false;
+  try { jwt.verify(h.slice(7), chaveJwt); return true; } catch { return false; }
+}

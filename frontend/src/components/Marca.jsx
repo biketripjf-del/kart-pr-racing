@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Home, Radio, Trophy, Users, LayoutGrid, UserRound, Shuffle, Swords, Camera, GraduationCap, Megaphone, ScrollText } from 'lucide-react';
+import { Home, Radio, Trophy, Users, LayoutGrid, UserRound, Shuffle, Swords, Camera, GraduationCap, Megaphone, ScrollText, Car } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { getToken, setToken } from '../api.js';
 
@@ -25,6 +25,7 @@ export function Marca() {
 export const ABAS = [['/', 'Início', Home], ['/ao-vivo', 'Ao vivo', Radio], ['/ranking', 'Ranking', Trophy], ['/pilotos', 'Pilotos', Users], ['/mais', 'Mais', LayoutGrid]];
 export const MAIS = [
   ['/ficha', 'Minha ficha', UserRound, 'Foto, contato, peso e altura'],
+  ['/caronas', 'Caronas', Car, 'Quem leva quem pra Volta Redonda'],
   ['/sorteio', 'Sorteio dos grupos', Shuffle, 'Ao vivo, pra todo mundo ao mesmo tempo'],
   ['/comparar', 'Comparar pilotos', Swords, 'Lado a lado e confronto direto'],
   ['/midia', 'Fotos e vídeos', Camera, 'Suba o que você gravou no dia'],

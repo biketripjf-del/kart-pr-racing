@@ -5,7 +5,8 @@ import { Toaster } from 'sonner';
 import './index.css';
 
 import Inicio from './pages/Inicio.jsx';
-import { FichaLista, FichaForm } from './pages/Ficha.jsx';
+import { FichaForm, LinkPessoal } from './pages/Ficha.jsx';
+import Caronas from './pages/Caronas.jsx';
 import Sorteio from './pages/Sorteio.jsx';
 import Mural from './pages/Mural.jsx';
 import Regulamento from './pages/Regulamento.jsx';
@@ -33,8 +34,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <Toaster position="top-center" richColors />
       <Routes>
         <Route path="/" element={<Inicio />} />
-        <Route path="/ficha" element={<FichaLista />} />
-        <Route path="/ficha/:id" element={<FichaForm />} />
+        <Route path="/ficha" element={<FichaForm />} />
+        <Route path="/ficha/:id" element={<Navigate to="/ficha" replace />} />
+        <Route path="/f/:token" element={<LinkPessoal />} />
+        <Route path="/caronas" element={<Caronas />} />
         <Route path="/sorteio" element={<Sorteio />} />
         <Route path="/mural" element={<Mural />} />
         <Route path="/regulamento" element={<Regulamento />} />

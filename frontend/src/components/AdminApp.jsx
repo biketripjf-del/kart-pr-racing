@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Megaphone, Shuffle, Trash2, Pin } from 'lucide-react';
+import { Megaphone, Shuffle, Trash2, Pin, Link2, Copy, RefreshCw, MessageCircle } from 'lucide-react';
 import { api, getToken } from '../api.js';
 import { quandoBRT } from './Marca.jsx';
 
@@ -98,6 +98,57 @@ export function AdminSorteio({ naTela }) {
         )}
         {s?.fase === 'contagem' && <button onClick={cancelar} className="btn btn-ghost w-full text-sm">Cancelar o sorteio marcado</button>}
         {concluido && !refazer && <button onClick={() => setRefazer(true)} className="btn btn-ghost w-full text-sm">Refazer o sorteio</button>}
+      </div>
+    </div>
+  );
+}
+
+// Links pessoais da ficha (14/10 21:43: "a ficha do piloto nao pode ser publica"). Só o organizador vê.
+// "WhatsApp" abre o WhatsApp do PRÓPRIO celular do organizador com a mensagem pronta: quem envia é ele.
+const textoLink = (nome, url) => `Fala, ${nome.split(' ')[0]}! Esse é o seu link pessoal do app da 3ª Copa P&R:\n${url}\n\nToque nele pra preencher sua ficha (foto, peso, altura, contato de emergência). Depois o app já reconhece você no celular. O link é só seu, não repasse.`;
+export function AdminLinks() {
+  const [lista, setLista] = useState(null);
+  const [so, setSo] = useState('falta');
+  const carregar = () => api.get('/ficha/admin/links').then((r) => setLista(r.data.pilotos)).catch(() => setLista([]));
+  useEffect(() => { carregar(); }, []);
+  const url = (t) => `${location.origin}/f/${t}`;
+  async function copiar(p) {
+    try { await navigator.clipboard.writeText(textoLink(p.nome, url(p.token))); toast.success(`Mensagem do ${p.nome.split(' ')[0]} copiada.`); } catch { toast.error('Não consegui copiar.'); }
+  }
+  async function trocar(p) {
+    await api.post(`/ficha/admin/${p.id}/novo-link`); toast.success('Link trocado. O antigo parou de funcionar.'); carregar();
+  }
+  const zap = (p) => {
+    const d = String(p.whatsapp || '').replace(/\D/g, '');
+    const num = d.length >= 10 ? (d.startsWith('55') ? d : `55${d}`) : '';
+    return `https://wa.me/${num}?text=${encodeURIComponent(textoLink(p.nome, url(p.token)))}`;
+  };
+  const mostrados = (lista || []).filter((p) => so === 'todos' || !p.tem_ficha);
+  return (
+    <div className="mb-5">
+      <div className="flex items-center gap-2 mb-2 text-xs uppercase tracking-[0.2em] text-[color:var(--color-gold)] font-bold"><Link2 size={14} /> Só você vê isto · links pessoais</div>
+      <div className="card p-3">
+        <div className="text-xs text-tx2 px-1">Mande pra cada piloto o link DELE. O botão verde abre o seu WhatsApp com a mensagem pronta.</div>
+        <div className="mt-2 flex gap-1.5 px-1">
+          {[['falta', `Falta preencher${lista ? ` (${lista.filter((p) => !p.tem_ficha).length})` : ''}`], ['todos', 'Todos']].map(([k, r]) => (
+            <button key={k} onClick={() => setSo(k)} className={`px-3 py-1 rounded-full text-xs font-semibold border ${so === k ? 'bg-brand text-white border-transparent' : 'border-[#d5dfeb] text-tx'}`}>{r}</button>
+          ))}
+        </div>
+        <div className="mt-2 divide-y divide-[#e3e9f1]">
+          {!lista && <div className="p-3 text-center text-sm text-tx2">Carregando…</div>}
+          {mostrados.map((p) => (
+            <div key={p.id} className="flex items-center gap-2 px-1 py-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold truncate">{p.nome}</div>
+                <div className={`text-[11px] ${p.tem_ficha ? 'text-emerald-700' : 'text-amber-700'}`}>{p.tem_ficha ? 'ficha preenchida' : 'falta preencher'}</div>
+              </div>
+              <a href={zap(p)} target="_blank" rel="noreferrer" className="px-2.5 py-1.5 rounded-lg bg-[#1f9d55] text-white text-xs font-semibold flex items-center gap-1"><MessageCircle size={13} /> WhatsApp</a>
+              <button onClick={() => copiar(p)} title="copiar mensagem" className="p-1.5 rounded-lg border border-[#d5dfeb]"><Copy size={14} className="text-brand" /></button>
+              <button onClick={() => trocar(p)} title="trocar link (o antigo para)" className="p-1.5 rounded-lg border border-[#d5dfeb]"><RefreshCw size={14} className="text-tx3" /></button>
+            </div>
+          ))}
+          {lista && !mostrados.length && <div className="p-3 text-center text-sm text-emerald-700">Todo mundo preencheu.</div>}
+        </div>
       </div>
     </div>
   );

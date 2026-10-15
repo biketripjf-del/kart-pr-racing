@@ -18,6 +18,7 @@ import avisosRoutes from './routes/avisos.js';
 import sorteioRoutes, { iniciarLaco } from './routes/sorteio.js';
 import historicoRoutes from './routes/historico.js';
 import midiaRoutes from './routes/midia.js';
+import caronasRoutes from './routes/caronas.js';
 import { ensureSeed } from './bootstrap.js';
 
 dotenv.config();
@@ -44,6 +45,7 @@ app.use('/api/avisos', avisosRoutes);
 app.use('/api/sorteio', sorteioRoutes);
 app.use('/api/historico', historicoRoutes);
 app.use('/api/midia', midiaRoutes);
+app.use('/api/caronas', caronasRoutes);
 app.get('/api/config', (req, res) => res.json({ evento_atual: EVENTO_ATUAL() }));
 
 // erro genérico (evita vazar stack)

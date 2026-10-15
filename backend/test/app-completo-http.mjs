@@ -10,10 +10,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BASE = `http://localhost:${process.env.PORT}`;
 let falhas = 0;
 const ok = (c, msg) => { console.log(`${c ? '✅' : '❌'} ${msg}`); if (!c) falhas++; };
-async function http(metodo, url, body, token) {
+async function http(metodo, url, body, token, extra = {}) {
   const r = await fetch(BASE + url, {
     method: metodo,
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra },
     body: body ? JSON.stringify(body) : undefined,
   });
   const buf = Buffer.from(await r.arrayBuffer());
@@ -59,26 +59,67 @@ ok(!JSON.stringify(lista.json).includes('32999990000'), 'lista pública não mos
 const idP2 = lista.json.pilotos.find((p) => p.nome === 'Piloto 2').id;
 const foto = 'data:image/png;base64,' + Buffer.from('89504e470d0a1a0a', 'hex').toString('base64');
 const ficha = { nome: 'Piloto Dois da Silva', apelido: 'Dois', whatsapp: '(32) 98888-1111', data_nascimento: '1990-05-01', peso_kg: 82.5, altura_cm: 178, tipo_sanguineo: 'O+', emergencia_nome: 'Mãe', emergencia_tel: '32 3333-0000', consentimento: true, foto };
-ok((await http('POST', `/api/ficha/${idP2}`, { ...ficha, consentimento: false })).status === 400, 'ficha sem consentimento = 400');
-ok((await http('POST', `/api/ficha/${idP2}`, { ...ficha, foto: 'data:text/html;base64,PHNjcmlwdD4=' })).status === 400, 'foto que não é imagem = 400');
-ok((await http('POST', `/api/ficha/${idP2}`, ficha)).status === 200, '1ª vez: preenche sem senha');
-ok((await http('POST', `/api/ficha/${idP2}`, { ...ficha, apelido: 'Hacker' })).status === 403, 'editar sem confirmar o WhatsApp = 403');
-ok((await http('POST', `/api/ficha/${idP2}`, { ...ficha, apelido: 'Hacker', confirmacao: '32 97777-1111' })).status === 403, 'WhatsApp errado = 403');
-ok((await http('POST', `/api/ficha/${idP2}`, { ...ficha, apelido: 'Doisão', foto: undefined, confirmacao: '5532988881111' })).status === 200,
-  'mesmo WhatsApp escrito de outro jeito (+55, sem máscara) libera a edição');
-ok((await http('POST', `/api/ficha/${idP2}/abrir`, { confirmacao: '32 97777-1111' })).status === 403, 'abrir a ficha com WhatsApp errado = 403');
-const aberta = await http('POST', `/api/ficha/${idP2}/abrir`, { confirmacao: '32988881111' });
-ok(aberta.status === 200 && aberta.json.altura_cm === 178 && aberta.json.data_nascimento === '1990-05-01' && !('foto' in aberta.json),
-  'abrir a ficha com o WhatsApp certo devolve os dados pra editar (sem a foto)');
-const pub = await http('GET', `/api/ficha/${idP2}`);
-ok(pub.json.tem_ficha && pub.json.apelido === 'Doisão' && pub.json.tem_foto, 'ficha pública: apelido novo e a foto ficou (edição sem foto não apaga)');
-ok(!('whatsapp' in pub.json) && !('peso_kg' in pub.json) && !('data_nascimento' in pub.json), 'ficha pública não traz dado pessoal');
+// a ficha só abre pelo LINK PESSOAL (14/10 21:43: "a ficha do piloto nao pode ser publica")
+ok((await http('POST', `/api/ficha/${idP2}`, ficha)).status === 404, 'rota antiga por id (aberta) não existe mais');
+ok((await http('POST', '/api/ficha/eu', ficha)).status === 401, 'sem link pessoal = 401');
+ok((await http('GET', '/api/ficha/eu', null, null, { 'X-Piloto': 'chute-qualquer-de-vinte-chars' })).status === 401, 'link chutado = 401');
+ok((await http('GET', '/api/ficha/admin/links')).status === 401, 'links pessoais sem login = 401');
+const links = await http('GET', '/api/ficha/admin/links', null, token);
+ok(links.status === 200 && links.json.pilotos.length === 28 && new Set(links.json.pilotos.map((p) => p.token)).size === 28 && links.json.pilotos.every((p) => p.token.length >= 20),
+  'admin: 28 links pessoais, todos diferentes, 20+ caracteres');
+const links2 = await http('GET', '/api/ficha/admin/links', null, token);
+ok(links2.json.pilotos.every((p, i) => p.token === links.json.pilotos[i].token), 'pedir de novo devolve os MESMOS links (não invalida o que já foi mandado)');
+const tk2 = links.json.pilotos.find((p) => p.id === idP2).token;
+const tk3 = links.json.pilotos.find((p) => p.nome === 'Piloto 3').token;
+const X2 = { 'X-Piloto': tk2 };
+ok((await http('GET', '/api/ficha/eu', null, null, X2)).json.nome_evento === 'Piloto 2', 'o link do Piloto 2 abre a ficha DELE');
+ok((await http('POST', '/api/ficha/eu', { ...ficha, consentimento: false }, null, X2)).status === 400, 'ficha sem consentimento = 400');
+ok((await http('POST', '/api/ficha/eu', { ...ficha, foto: 'data:text/html;base64,PHNjcmlwdD4=' }, null, X2)).status === 400, 'foto que não é imagem = 400');
+ok((await http('POST', '/api/ficha/eu', ficha, null, X2)).status === 200, 'preenche pela ficha do link');
+ok((await http('POST', '/api/ficha/eu', { ...ficha, apelido: 'Doisão', foto: undefined }, null, X2)).status === 200, 'edita de novo pelo mesmo link');
+const minha = await http('GET', '/api/ficha/eu', null, null, X2);
+ok(minha.json.altura_cm === 178 && minha.json.data_nascimento === '1990-05-01' && minha.json.apelido === 'Doisão' && minha.json.tem_foto && !('foto' in minha.json),
+  'a própria ficha volta inteira pra editar (sem o peso da foto) e a foto ficou');
+ok((await http('GET', '/api/ficha/eu', null, null, { 'X-Piloto': tk3 })).json.id !== idP2, 'o link de outro piloto não abre a ficha do Piloto 2');
+const troca = await http('POST', `/api/ficha/admin/${idP2}/novo-link`, null, token);
+ok((await http('GET', '/api/ficha/eu', null, null, X2)).status === 401 && (await http('GET', '/api/ficha/eu', null, null, { 'X-Piloto': troca.json.token })).status === 200,
+  'admin troca o link: o antigo morre na hora, o novo abre');
+const X2n = { 'X-Piloto': troca.json.token };
+const pubLista = (await http('GET', '/api/ficha/lista')).json.pilotos.find((p) => p.id === idP2);
+ok(pubLista.tem_ficha && pubLista.apelido === 'Doisão' && !('whatsapp' in pubLista) && !('token' in pubLista), 'lista pública: só nome, apelido e se tem ficha (sem telefone nem link)');
 const img = await http('GET', `/api/pilotos/${idP2}/foto`);
 ok(img.status === 200 && img.tipo === 'image/png' && Buffer.isBuffer(img.json) && img.json.length === 8, 'foto servida como imagem de verdade');
 ok((await http('GET', `/api/pilotos/${idP2 + 1}/foto`)).status === 404, 'sem foto = 404');
 const adm = await http('GET', '/api/pilotos', null, token);
 const p2 = adm.json.find((p) => p.id === idP2);
 ok(p2.peso_kg == 82.5 && p2.altura_cm === 178 && p2.tipo_sanguineo === 'O+' && p2.tem_foto && !('foto' in p2), 'admin vê a ficha inteira, sem o peso da foto na lista');
+
+// ---------- caronas ----------
+const X3 = { 'X-Piloto': tk3 };
+const tk4 = links.json.pilotos.find((p) => p.nome === 'Piloto 4').token;
+const X4 = { 'X-Piloto': tk4 };
+let car = await http('GET', '/api/caronas');
+ok(car.json.caronas.length === 0 && car.json.sem_carona.length === 28 && car.json.eu === null, 'caronas: ninguém em carro, visitante sem identidade');
+ok((await http('POST', '/api/caronas', { vagas: 2 })).status === 401, 'oferecer carona sem link = 401');
+const of = await http('POST', '/api/caronas', { vagas: 1, saida_local: 'Independência', saida_hora: '10:00' }, null, X2n);
+ok(of.status === 201, 'Piloto 2 oferece carro com 1 vaga');
+ok((await http('POST', '/api/caronas', { vagas: 3 }, null, X2n)).status === 409, 'não oferece 2 carros');
+ok((await http('POST', `/api/caronas/${of.json.id}/entrar`, {}, null, X2n)).status === 409, 'motorista não entra de passageiro');
+ok((await http('POST', `/api/caronas/${of.json.id}/entrar`, {}, null, X3)).status === 200, 'Piloto 3 entra');
+ok((await http('POST', `/api/caronas/${of.json.id}/entrar`, {}, null, X4)).json.erro === 'carro_cheio', 'Piloto 4 barrado: carro cheio');
+ok((await http('PATCH', `/api/caronas/${of.json.id}`, { vagas: 3 }, null, X3)).status === 403, 'passageiro não mexe no carro');
+ok((await http('PATCH', `/api/caronas/${of.json.id}`, { vagas: 0 }, null, X2n)).status === 400, 'vagas 0 recusado');
+ok((await http('PATCH', `/api/caronas/${of.json.id}`, { vagas: 2 }, null, X2n)).status === 200, 'motorista abre mais 1 vaga');
+ok((await http('POST', `/api/caronas/${of.json.id}/entrar`, {}, null, X4)).status === 200, 'agora o Piloto 4 entra');
+ok((await http('PATCH', `/api/caronas/${of.json.id}`, { vagas: 1 }, null, X2n)).json.erro === 'vagas_menor_que_passageiros', 'não reduz vagas abaixo de quem já entrou');
+ok((await http('POST', `/api/caronas/${of.json.id}/sair`, { piloto_id: (await http('GET', '/api/ficha/eu', null, null, X4)).json.id }, null, X3)).status === 403, 'um passageiro não tira o outro');
+car = await http('GET', '/api/caronas', null, null, X3);
+ok(car.json.caronas[0].passageiros.length === 2 && car.json.sem_carona.length === 25 && car.json.eu?.id != null, 'quadro: 1 carro com 2, 25 sem carona, eu reconhecido');
+ok(!JSON.stringify(car.json).includes('98888'), 'caronas não expõem telefone');
+ok((await http('POST', `/api/caronas/${of.json.id}/sair`, {}, null, X3)).json.ok === true, 'Piloto 3 sai do carro');
+ok((await http('DELETE', `/api/caronas/${of.json.id}`, null, null, X4)).status === 403, 'passageiro não desfaz o carro');
+ok((await http('DELETE', `/api/caronas/${of.json.id}`, null, token)).status === 200, 'organização desfaz o carro');
+ok((await http('GET', '/api/caronas')).json.sem_carona.length === 28, 'todo mundo volta pra sem carona');
 
 // ---------- mural ----------
 ok((await http('POST', '/api/avisos', { titulo: 'X', texto: 'Y' })).status === 401, 'mural: publicar sem login = 401');

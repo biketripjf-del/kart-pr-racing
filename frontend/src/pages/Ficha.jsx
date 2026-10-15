@@ -1,44 +1,39 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Camera, CheckCircle2, Search, Lock } from 'lucide-react';
-import { api } from '../api.js';
+import { Camera, Lock } from 'lucide-react';
+import { api, getEu, setEu } from '../api.js';
+import { AdminLinks, useAdmin } from '../components/AdminApp.jsx';
 import { Casca, Avatar } from '../components/Marca.jsx';
 import * as M from '../mascaras.js';
 
-// ---------- /ficha: o piloto acha o próprio nome ----------
-export function FichaLista() {
-  const [dados, setDados] = useState(null);
-  const [busca, setBusca] = useState('');
-  useEffect(() => { api.get('/ficha/lista').then((r) => setDados(r.data)).catch(() => setDados({ pilotos: [] })); }, []);
-  const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const lista = (dados?.pilotos || []).filter((p) => norm(p.nome).includes(norm(busca)));
-  const feitas = (dados?.pilotos || []).filter((p) => p.tem_ficha).length;
+// ---------- /f/:token: o link pessoal. Guarda no celular e abre a ficha ----------
+export function LinkPessoal() {
+  const { token } = useParams();
+  const nav = useNavigate();
+  const [erro, setErro] = useState(false);
+  useEffect(() => {
+    setEu(token);
+    api.get('/ficha/eu').then((r) => { toast.success(`Oi, ${r.data.nome_evento.split(' ')[0]}! Este celular agora é seu no app.`); nav('/ficha', { replace: true }); })
+      .catch(() => { setEu(null); setErro(true); });
+  }, [token]);
   return (
-    <Casca sub="Ficha do piloto">
-      <div className="card p-4 text-sm text-tx">
-        Toque no seu nome e preencha a ficha: foto, contato, peso, altura e um contato de emergência.
-        Telefone, peso, nascimento e saúde ficam só com a organização; no app aparecem só a foto e o nome.
-      </div>
-      <div className="mt-4 relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx3" />
-        <input className="input pl-9" placeholder="Procure seu nome" value={busca} onChange={(e) => setBusca(e.target.value)} />
-      </div>
-      {dados && <div className="mt-2 text-xs text-tx2">{feitas} de {dados.pilotos.length} fichas preenchidas</div>}
-      <div className="card mt-3 overflow-hidden">
-        {!dados && <div className="p-6 text-center text-tx2">Carregando…</div>}
-        {lista.map((p) => (
-          <Link key={p.id} to={`/ficha/${p.id}`} className="flex items-center gap-3 px-4 py-2.5 border-b border-[#e3e9f1] last:border-0 hover:bg-[#eef3f9]">
-            <Avatar id={p.id} v={p.foto_v} nome={p.nome} tam={36} />
-            <div className="flex-1 font-medium">{p.nome}</div>
-            {p.tem_ficha
-              ? <span className="flex items-center gap-1 text-[11px] text-emerald-700"><CheckCircle2 size={14} /> preenchida</span>
-              : <span className="text-[11px] text-amber-700">falta preencher</span>}
-          </Link>
-        ))}
-        {dados && !lista.length && <div className="p-6 text-center text-sm text-tx2">Nenhum nome encontrado. Se o seu não está na lista, fale com a organização.</div>}
-      </div>
+    <Casca sub="Minha ficha">
+      {!erro
+        ? <div className="text-center text-tx2 py-10">Abrindo sua ficha…</div>
+        : <div className="card p-6 text-center text-tx">Esse link não vale mais (foi trocado ou está incompleto). Peça o seu de novo à organização.</div>}
     </Casca>
+  );
+}
+
+// sem link pessoal neste celular: explica como chegar na ficha (a lista aberta de nomes saiu: ficha não é pública)
+function SemLink() {
+  return (
+    <div className="card p-5 text-sm text-tx space-y-3">
+      <div className="flex items-center gap-2 font-semibold text-base"><Lock size={17} className="text-brand" /> A ficha é pessoal</div>
+      <p>Cada piloto recebe da organização um <b>link só dele</b>, pelo WhatsApp. Toque nele uma vez: o app abre a sua ficha e passa a reconhecer você neste celular (ficha, caronas, fotos).</p>
+      <p className="text-tx2">Não recebeu ou trocou de celular? Peça o seu link ao Brunner ou ao Emmanuel.</p>
+    </div>
   );
 }
 
@@ -77,42 +72,32 @@ function Campo({ rot, children, dica }) {
   );
 }
 
-// ---------- /ficha/:id: o formulário ----------
+// ---------- /ficha: a ficha de quem abriu o link pessoal neste celular ----------
 export function FichaForm() {
-  const { id } = useParams();
   const nav = useNavigate();
-  const [piloto, setPiloto] = useState(null);
+  const admin = useAdmin();
+  const [piloto, setPiloto] = useState(getEu() ? null : false);
   const [f, setF] = useState(VAZIO);
   const [foto, setFoto] = useState(null);
-  const [confirmacao, setConfirmacao] = useState('');
   const [aceite, setAceite] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const arquivo = useRef(null);
 
   useEffect(() => {
-    api.get(`/ficha/${id}`).then((r) => {
-      setPiloto(r.data);
-      setF((x) => ({ ...x, nome: r.data.nome || '', apelido: r.data.apelido || '' }));
-    }).catch(() => setPiloto(false));
-  }, [id]);
+    if (!getEu()) return;
+    api.get('/ficha/eu').then(({ data }) => {
+      setPiloto(data);
+      const t = Object.fromEntries(Object.keys(VAZIO).map((k) => [k, data[k] == null ? '' : String(data[k])]));
+      setF({
+        ...t, nome: t.nome || data.nome_evento, whatsapp: M.telefone(t.whatsapp), emergencia_tel: M.telefone(t.emergencia_tel),
+        data_nascimento: M.isoParaData(t.data_nascimento), peso_kg: M.peso(t.peso_kg), altura_cm: M.altura(t.altura_cm), instagram: M.instagram(t.instagram),
+      });
+      setAceite(!!data.tem_ficha);
+    }).catch(() => { setEu(null); setPiloto(false); });
+  }, []);
 
   // mascara = função de mascaras.js aplicada a cada tecla
   const set = (k, mascara) => (e) => { const v = mascara ? mascara(e.target.value) : e.target.value; setF((x) => ({ ...x, [k]: v })); };
-  const [aberta, setAberta] = useState(false);
-
-  async function abrir() {
-    try {
-      const { data } = await api.post(`/ficha/${id}/abrir`, { confirmacao });
-      const t = Object.fromEntries(Object.keys(VAZIO).map((k) => [k, data[k] == null ? '' : String(data[k])]));
-      setF({
-        ...t, whatsapp: M.telefone(t.whatsapp), emergencia_tel: M.telefone(t.emergencia_tel), data_nascimento: M.isoParaData(t.data_nascimento),
-        peso_kg: M.peso(t.peso_kg), altura_cm: M.altura(t.altura_cm), instagram: M.instagram(t.instagram),
-      });
-      setAberta(true);
-      toast.success('Ficha aberta. Altere o que quiser e salve.');
-    } catch { toast.error('WhatsApp não confere com o da ficha.'); }
-  }
-
   async function escolherFoto(e) {
     const a = e.target.files?.[0];
     if (!a) return;
@@ -133,21 +118,22 @@ export function FichaForm() {
     try {
       await api.post(`/ficha/${id}`, {
         ...f, data_nascimento: nasc, peso_kg: num(f.peso_kg), altura_cm: num(f.altura_cm), consentimento: true,
-        ...(foto ? { foto } : {}), ...(piloto?.tem_ficha ? { confirmacao } : {}),
+        ...(foto ? { foto } : {}),
       });
       toast.success('Ficha salva. Bora pra pista!');
-      nav(`/piloto/${id}`);
+      nav(`/piloto/${piloto.id}`);
     } catch (err) {
       const d = err.response?.data;
-      toast.error(d?.erro === 'confirme_o_whatsapp' ? 'WhatsApp não confere com o da ficha.' : d?.detalhe || 'Não consegui salvar. Confira os campos.');
+      toast.error(d?.erro === 'link_invalido' ? 'Seu link pessoal não vale mais. Peça um novo à organização.' : d?.detalhe || 'Não consegui salvar. Confira os campos.');
     } finally { setEnviando(false); }
   }
 
-  if (piloto === null) return <Casca sub="Ficha do piloto"><div className="text-center text-tx2 py-10">Carregando…</div></Casca>;
-  if (piloto === false) return <Casca sub="Ficha do piloto"><div className="card p-6 text-center text-tx">Piloto não encontrado. <Link to="/ficha" className="text-[color:var(--color-brand)]">Voltar à lista</Link></div></Casca>;
+  if (piloto === null) return <Casca sub="Minha ficha"><div className="text-center text-tx2 py-10">Carregando…</div></Casca>;
+  if (piloto === false) return <Casca sub="Minha ficha">{admin && <AdminLinks />}<SemLink /></Casca>;
 
   return (
-    <Casca sub="Ficha do piloto">
+    <Casca sub="Minha ficha">
+      {admin && <AdminLinks />}
       <form onSubmit={enviar} className="space-y-4">
         <div className="card p-5 flex flex-col items-center gap-3">
           {foto
@@ -159,17 +145,6 @@ export function FichaForm() {
           </button>
           <div className="text-[11px] text-tx3 text-center">Foto de rosto, de frente. Aparece no quadro, no sorteio e no ranking.</div>
         </div>
-
-        {piloto.tem_ficha && (
-          <div className="card p-4 border-amber-500/40">
-            <div className="flex items-center gap-2 text-sm font-semibold text-amber-700"><Lock size={15} /> Essa ficha já foi preenchida</div>
-            <div className="mt-1 text-xs text-tx2">Para alterar, digite o WhatsApp que está cadastrado nela.</div>
-            <div className="mt-3 flex gap-2">
-              <input className="input" inputMode="tel" placeholder="(32) 99999-9999" value={confirmacao} onChange={(e) => setConfirmacao(M.telefone(e.target.value))} required />
-              <button type="button" className="btn btn-ghost shrink-0" onClick={abrir}>{aberta ? 'Aberta' : 'Abrir'}</button>
-            </div>
-          </div>
-        )}
 
         <div className="card p-5 space-y-4">
           <div className="font-semibold">Quem é você</div>
@@ -228,6 +203,7 @@ export function FichaForm() {
         </label>
         <button className="btn btn-primary w-full" disabled={enviando}>{enviando ? 'Salvando…' : 'Salvar ficha'}</button>
       </form>
+      <button className="mt-4 w-full text-xs text-tx3 underline" onClick={() => { setEu(null); setPiloto(false); }}>Não é você? Desconectar este celular</button>
     </Casca>
   );
 }
