@@ -8,7 +8,7 @@ import { useAdmin } from '../components/AdminApp.jsx';
 // Fotos e vídeos do dia, enviados por quem estava lá (Brunner 14/10: juntar o material pro marketing).
 // O arquivo vai INTEIRO (qualidade original); a miniatura da galeria é feita aqui no celular.
 const CHAVE_AUTOR = 'prcup_autor';
-const mb = (b) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.max(0.1, b / 1e6).toFixed(1)} MB`);
+const mb = (b) => (!b ? "0 MB" : b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.max(0.1, b / 1e6).toFixed(1)} MB`);
 
 function desenhar(fonte, w, h) {
   const lado = 360;

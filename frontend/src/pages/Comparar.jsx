@@ -79,7 +79,7 @@ export default function Comparar() {
           {ids.map((id) => {
             const p = (todos || []).find((x) => x.piloto_id === id) || dados[id]?.piloto;
             return (
-              <button key={id} onClick={() => trocar(id)} className="flex items-center gap-1.5 rounded-full bg-[color:var(--color-brand)] pl-1 pr-2.5 py-1 text-sm font-semibold">
+              <button key={id} onClick={() => trocar(id)} className="flex items-center gap-1.5 rounded-full bg-[color:var(--color-brand)] text-white pl-1 pr-2.5 py-1 text-sm font-semibold">
                 <Avatar id={id} v={p?.foto_v} nome={p?.nome} tam={24} /> {p?.nome || '…'} <X size={14} />
               </button>
             );
