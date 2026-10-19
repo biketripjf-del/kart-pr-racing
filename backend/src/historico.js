@@ -94,12 +94,16 @@ export function classificacaoDoEvento({ slug, estado }) {
     tab.sort(completa
       ? (x, y) => x.pontos - y.pontos || (x.mv_ms ?? Infinity) - (y.mv_ms ?? Infinity)
       : (x, y) => x.media - y.media || y.corridas - x.corridas || (x.mv_ms ?? Infinity) - (y.mv_ms ?? Infinity));
+    // campeão OFICIAL (19/10/2026, Brunner sobre a 2ª Copa: "foi o guilherme"): a folha não traz a regra de 2024 e a
+    // soma com "faltou = 14" dava outro. O fato informado pela organização vence a conta; o resto segue a soma.
+    const oficial = completa && estado.campeao_oficial ? tab.findIndex((l) => l.piloto === estado.campeao_oficial) : -1;
+    if (oficial > 0) tab.unshift(...tab.splice(oficial, 1));
     tab.forEach((l, i) => { l.pos = i + 1; });
     return {
       slug, titulo: estado.titulo, data: estado.data, formato: 'corridas', completa, linhas: tab,
       // edição da Copa guardada como lista de corridas (1ª e 2ª): completa, o 1º é o campeão e conta título
       campeao: estado.copa && completa ? tab[0]?.piloto ?? null : null,
-      criterio: completa ? 'soma das posições (menor vence)' : `parcial: ${lancadas.length} de ${previstas} corridas lançadas — ordem pela média de posição`,
+      criterio: completa ? (oficial >= 0 ? 'campeão oficial informado pela organização; demais pela soma das posições' : 'soma das posições (menor vence)') : `parcial: ${lancadas.length} de ${previstas} corridas lançadas — ordem pela média de posição`,
     };
   }
 
