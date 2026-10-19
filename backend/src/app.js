@@ -24,6 +24,9 @@ import { ensureSeed } from './bootstrap.js';
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+// Railway na frente: sem isso o req.ip é o do proxy e o limite de tentativas vale pra TODO MUNDO junto (log de
+// 19/10: ERR_ERL_UNEXPECTED_X_FORWARDED_FOR). 28 pilotos abrindo o link ao mesmo tempo estourariam os 40/15 min.
+app.set('trust proxy', 1);
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
