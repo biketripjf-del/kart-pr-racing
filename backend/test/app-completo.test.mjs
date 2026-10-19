@@ -250,11 +250,47 @@ test('desempate do ranking (19/10): pontos → colocações como na F1 (melhor, 
   const copaA = ev20('c', '2026-03-01', [...semA.slice(0, 10), 11, ...semA.slice(10)].filter((n) => n !== 12), true);  // A=P11 em 11º, B=P12 não corre
   const v1 = ev20('v1', '2026-01-01', [...vinte.filter((n) => n !== 12 && n !== 11).slice(0, 10), 12], false);        // B 11º, A não corre
   const v2 = ev20('v2', '2026-02-01', [...vinte.filter((n) => n !== 12 && n !== 11), 12], false);                     // B 19º (último), A não corre
-  const r2 = rankingCampeonato([copaA, v1, v2]).tabela;
+  // 'todos': sem descarte (3 eventos no mesmo ano ligariam o descarte e mudariam o que este teste mede)
+  const r2 = rankingCampeonato([copaA, v1, v2], { ano: 'todos' }).tabela;
   const A = r2.find((l) => l.piloto_id === 11); const B = r2.find((l) => l.piloto_id === 12);
   assert.equal(A.total, B.total, `empate em pontos (${A.total} × ${B.total})`);
   assert.equal(A.colocacoes[0], B.colocacoes[0], 'mesma melhor colocação');
   assert.ok(B.pos < A.pos, `B, com um resultado a mais, fica na frente (B ${B.pos}º, A ${A.pos}º)`);
+});
+
+test('descarte (19/10): 1 por temporada a partir de 3 eventos; sai o de menos pontos (falta incluída); última corrida e punição não saem', () => {
+  const ids = [1, 2, 3, 4];
+  const ev = (slug, data, ordem, extra = {}) => ({ slug, estado: { titulo: slug, data, formato: 'corridas', copa: true, corridas_previstas: 1,
+    pilotos: ids.map((n) => ({ nome: P(n), piloto_id: n })), corridas: [{ codigo: 'X', nome: 'X', linhas: linhas(ordem.map(P)).map((l) => ({ ...l, ...(extra[l.piloto] || {}) })) }] } });
+  // e1: P1 25 · P2 18 · P3 15 · P4 12 (P4 punido) | e2: P2 25 · P1 18 · P4 15 · P3 faltou | e3 (última): P3 25 · P2 18 · P1 15 · P4 12
+  const e1 = ev('e1', '2026-01-09', [1, 2, 3, 4], { [P(4)]: { punicao: 3 } });
+  const e2 = ev('e2', '2026-07-17', [2, 1, 4]);
+  // só 2 eventos no ano: sem descarte
+  const dois = rankingCampeonato([e1, e2]);
+  assert.equal(dois.descarte.ativo, false);
+  assert.ok(dois.tabela.every((l) => l.total === l.total_sem_descarte && !l.colunas.some((c) => c.descartado)), '2 corridas: nada sai');
+  assert.match(dois.descarte.regra, /2 até agora/);
+  // 3º evento: P4 último na última corrida (protegida) e punido no e1
+  const e3 = ev('e3', '2026-10-23', [3, 2, 1, 4]);
+  const r = rankingCampeonato([e1, e2, e3]);
+  assert.equal(r.descarte.ativo, true);
+  assert.equal(r.descarte.protegido, 'e3');
+  const L = (n) => r.tabela.find((l) => l.piloto_id === n);
+  const fora = (n) => L(n).colunas.filter((c) => c.descartado).map((c) => c.evento);
+  assert.deepEqual(fora(3), ['e2'], 'P3: a falta (0) é o descarte');
+  assert.equal(L(3).total, 15 + 25, 'P3: 3º em e1 + 1º em e3');
+  assert.deepEqual(fora(1), ['e2'], 'P1: e1 25 × e2 18 → sai o e2');
+  assert.equal(L(1).total, 25 + 15);
+  assert.deepEqual(fora(2), ['e1'], 'P2: e1 18 × e2 25 → sai o e1');
+  assert.deepEqual(fora(4), ['e2'], 'P4: o pior dele é o e1 (12), mas foi punido lá; e3 é a última → sai o e2 (15)');
+  assert.equal(L(4).total, 12 + 12);
+  assert.ok(r.tabela.every((l) => l.colunas.filter((c) => c.descartado).length === 1), 'exatamente 1 descarte por piloto');
+  assert.ok(!r.tabela.some((l) => l.colunas.find((c) => c.evento === 'e3').descartado), 'ninguém descarta a última');
+  assert.deepEqual(r.tabela.map((l) => [l.piloto_id, l.total]), [[2, 43], [1, 40], [3, 40], [4, 24]], 'P1 × P3 empatados em 40: P1 tem 1º, 2º, 3º; P3 1º e 3º');
+  // temporada anterior não entra na conta de eventos do ano; "todos" não descarta
+  const h = rankingCampeonato([ev('v', '2024-12-13', [1, 2, 3, 4]), e1, e2, e3], { ano: 'todos' });
+  assert.equal(h.descarte.ativo, false);
+  assert.ok(h.tabela.every((l) => l.total === l.total_sem_descarte));
 });
 
 test('títulos: edição da Copa no formato corridas dá título ao 1º; corridas avulsas (17/07) não', () => {
