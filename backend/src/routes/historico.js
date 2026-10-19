@@ -22,8 +22,9 @@ async function cartoes(ids) {
   return new Map(rows.map((r) => [r.id, { apelido: r.apelido, foto_v: r.tem_foto && r.foto_em ? new Date(r.foto_em).getTime() : null }]));
 }
 
+// ?ano=2024 · ?ano=todos (história inteira) · sem ano = o ano mais recente
 router.get('/ranking', ah(async (req, res) => {
-  const r = rankingCampeonato(await eventos());
+  const r = rankingCampeonato(await eventos(), { ano: req.query.ano });
   const c = await cartoes(r.tabela.map((l) => l.piloto_id));
   r.tabela = r.tabela.map((l) => ({ ...l, ...(c.get(l.piloto_id) || {}) }));
   res.set('Cache-Control', 'no-store');
@@ -47,7 +48,7 @@ router.get('/recordes', ah(async (req, res) => {
 // recente: "Manoel" de 2020 sai Emmanuel Pacheco); o da folha fica em nome_folha.
 router.get('/eventos', ah(async (req, res) => {
   const evs = (await eventos()).filter((e) => !e.estado.teste);
-  const nomeAtual = new Map(rankingCampeonato(evs).tabela.map((l) => [l.chave, l.piloto]));
+  const nomeAtual = new Map(rankingCampeonato(evs, { ano: 'todos' }).tabela.map((l) => [l.chave, l.piloto]));
   const lista = evs.map((e) => classificacaoDoEvento(e)).sort((a, b) => String(b.data).localeCompare(String(a.data)));
   const c = await cartoes(lista.flatMap((ev) => ev.linhas.map((l) => l.piloto_id)));
   for (const ev of lista) {
@@ -64,11 +65,12 @@ router.get('/pilotos', ah(async (req, res) => {
   const evs = (await eventos()).filter((e) => !e.estado.teste);
   const r = rankingCampeonato(evs);
   const posRanking = new Map(r.tabela.map((l) => [l.chave, l.pos]));
+  const correu = new Set(rankingCampeonato(evs, { ano: 'todos' }).tabela.map((l) => l.chave));
   const vistos = new Map();
   for (const e of evs) {
     for (const p of e.estado.pilotos || []) {
       if (p.piloto_id == null || vistos.has(p.piloto_id)) continue;
-      vistos.set(p.piloto_id, { piloto_id: p.piloto_id, nome: p.nome, ranking: posRanking.get(`id:${p.piloto_id}`) ?? null });
+      vistos.set(p.piloto_id, { piloto_id: p.piloto_id, nome: p.nome, ranking: posRanking.get(`id:${p.piloto_id}`) ?? null, ano: r.ano, ja_correu: correu.has(`id:${p.piloto_id}`) });
     }
   }
   const c = await cartoes([...vistos.keys()]);
@@ -88,6 +90,8 @@ router.get('/piloto/:id', ah(async (req, res) => {
     .map((e) => (e.estado.pilotos || []).find((p) => p.piloto_id === id)?.nome).find(Boolean);
   const r = rankingCampeonato(evs);
   const noRanking = r.tabela.find((l) => l.piloto_id === id);
+  const h = rankingCampeonato(evs, { ano: 'todos' });
+  const naHistoria = h.tabela.find((l) => l.piloto_id === id);
   const p = rows[0];
   res.set('Cache-Control', 'no-store');
   res.json({
@@ -95,7 +99,8 @@ router.get('/piloto/:id', ah(async (req, res) => {
       id: p.id, nome: nomeNoEvento || p.nome, apelido: p.apelido, cidade: p.cidade, instagram: p.instagram,
       foto_v: p.tem_foto && p.foto_em ? new Date(p.foto_em).getTime() : null,
     },
-    ranking: noRanking ? { pos: noRanking.pos, de: r.tabela.length, total: noRanking.total, parcial: r.parcial } : null,
+    ranking: noRanking ? { ano: r.ano, pos: noRanking.pos, de: r.tabela.length, total: noRanking.total, parcial: r.parcial } : null,
+    ranking_historia: naHistoria ? { pos: naHistoria.pos, de: h.tabela.length, total: naHistoria.total } : null,
     numeros: numerosDoPiloto(evs, `id:${id}`),
   });
 }));

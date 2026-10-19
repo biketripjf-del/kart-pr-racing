@@ -174,6 +174,7 @@ await http('PUT', '/api/ao-vivo/corridas-17-07/corrida/C2', { linhas: linhas(['P
 const rk = await http('GET', '/api/historico/ranking');
 ok(rk.status === 200 && rk.json.eventos.length === 1 && rk.json.eventos[0].slug === 'corridas-17-07', 'ranking: só o evento que já correu (copa-3 ainda vazia)');
 ok(rk.json.tabela[0].piloto === 'Só de julho' && rk.json.tabela.length === 3, 'ranking: vencedor de julho na frente');
+ok(rk.json.ano === '2026' && (await http('GET', '/api/historico/ranking?ano=todos')).json.ano === 'todos', 'ranking: padrão = temporada 2026; ?ano=todos = história');
 const pp = await http('GET', `/api/historico/piloto/${idP2}`);
 ok(pp.status === 200 && pp.json.numeros.corridas_disputadas === 1 && pp.json.numeros.vitorias === 1 && pp.json.piloto.foto_v, 'página do piloto: 1 corrida, 1 vitória, com foto');
 ok(pp.json.piloto.nome === 'Piloto 2' || pp.json.piloto.nome === 'Piloto Dois da Silva', `página do piloto mostra o nome (${pp.json.piloto.nome})`);

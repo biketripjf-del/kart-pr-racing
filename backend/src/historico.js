@@ -139,17 +139,27 @@ export const PONTOS_DO_11_EM_DIANTE = 1;
 export const PESO_AVULSA = 0.5;
 export const pontosDaPosicao = (pos, peso = 1) => (PONTOS_F1[pos - 1] ?? PONTOS_DO_11_EM_DIANTE) * peso;
 
-export function rankingCampeonato(eventos) {
-  const validos = eventos.filter((e) => !e.estado.teste)
+// Temporada (Brunner 19/10: "a copa é por ano, não por todas da história"; "deixa a opção de ver por toda história,
+// mas o padrão é a do ano"): `ano` = só os eventos daquele ano; 'todos' = a história inteira. Sem `ano` = o ano mais
+// recente com corrida lançada. O NOME exibido vem de todos os anos ("Manoel" de 2020 segue saindo Emmanuel Pacheco).
+export const anoDe = (c) => String(c.data || '').slice(0, 4);
+
+export function rankingCampeonato(eventos, { ano } = {}) {
+  const todos = eventos.filter((e) => !e.estado.teste)
     .map((e) => ({ ...classificacaoDoEvento(e), avulsa: e.estado.formato === 'corridas' && !e.estado.copa }))
     .filter((c) => c.linhas.length)
     .sort((a, b) => String(a.data).localeCompare(String(b.data)));
+  const anos = [...new Set(todos.map(anoDe))].sort().reverse();
+  const temporada = ano === 'todos' ? null : (ano && anos.includes(String(ano)) ? String(ano) : anos[0] ?? null);
+  const validos = temporada ? todos.filter((c) => anoDe(c) === temporada) : todos;
+  const nomes = new Map();
+  for (const c of todos) for (const l of c.linhas) nomeRecente(nomes.get(l.chave) || nomes.set(l.chave, {}).get(l.chave), l.piloto, c.data);
   const pilotos = new Map();
   for (const c of validos) {
     for (const l of c.linhas) {
       if (!pilotos.has(l.chave)) pilotos.set(l.chave, { chave: l.chave, piloto: l.piloto, piloto_id: l.piloto_id, por_evento: {} });
       const p = pilotos.get(l.chave);
-      nomeRecente(p, l.piloto, c.data);
+      p.piloto = nomes.get(l.chave).piloto;
       p.por_evento[c.slug] = l.pos;
       if (l.piloto_id != null) p.piloto_id = l.piloto_id;
     }
@@ -169,6 +179,7 @@ export function rankingCampeonato(eventos) {
     || b.eventos_disputados - a.eventos_disputados || a.piloto.localeCompare(b.piloto));
   tabela.forEach((l, i) => { l.pos = i + 1; });
   return {
+    ano: temporada ?? 'todos', anos,
     eventos: validos.map((c) => ({ slug: c.slug, titulo: c.titulo, data: c.data, completa: c.completa, n: c.linhas.length, criterio: c.criterio, avulsa: c.avulsa })),
     parcial: validos.some((c) => !c.completa),
     regra: 'Pontos como na Fórmula 1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · 10º 1 · do 11º em diante 1. Corrida avulsa (fora da Copa) vale metade. Quem não correu leva 0. Mais pontos vence; empate: melhor colocação.',

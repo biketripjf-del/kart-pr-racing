@@ -34,8 +34,11 @@ export default function Piloto() {
         </div>
         {ranking && (
           <div className="mt-3 px-3 py-1 rounded-full bg-[color:var(--color-brand)] text-white text-sm font-bold">
-            {ranking.pos}º no ranking{ranking.parcial ? ' (parcial)' : ''} · {Number(ranking.total).toLocaleString('pt-BR')} pts
+            {ranking.pos}º no ranking {ranking.ano}{ranking.parcial ? ' (parcial)' : ''} · {Number(ranking.total).toLocaleString('pt-BR')} pts
           </div>
+        )}
+        {d.ranking_historia && (
+          <div className="mt-1.5 text-[11px] text-tx2">Toda a história: {d.ranking_historia.pos}º · {Number(d.ranking_historia.total).toLocaleString('pt-BR')} pts</div>
         )}
       </div>
 

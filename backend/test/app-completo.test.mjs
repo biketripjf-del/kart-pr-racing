@@ -202,6 +202,26 @@ test('ranking F1 (19/10): 25-18-15-12-10-8-6-4-2-1, 11º em diante 1; avulsa val
   assert.equal(emp.tabela[0].total, emp.tabela[1].total, '43 a 43');
 });
 
+test('ranking por temporada (19/10): padrão = o ano mais recente; ?ano=2024 só aquele ano; todos = a história; nome de todos os anos', () => {
+  const copaDe = (slug, data, ordem, nomes = {}) => ({ slug, estado: { titulo: slug, data, formato: 'corridas', copa: true, corridas_previstas: 1,
+    pilotos: [1, 2, 3].map((n) => ({ nome: nomes[n] || P(n), piloto_id: n })), corridas: [{ codigo: 'X', nome: 'X', linhas: linhas(ordem.map((n) => nomes[n] || P(n))) }] } });
+  const evs = [copaDe('c2020', '2020-12-22', [3, 1], { 3: 'Velho' }), copaDe('c2024', '2024-12-13', [1, 2]), copaDe('c2026', '2026-10-23', [2, 1, 3])];
+  const r = rankingCampeonato(evs);
+  assert.equal(r.ano, '2026');
+  assert.deepEqual(r.anos, ['2026', '2024', '2020']);
+  assert.deepEqual(r.eventos.map((e) => e.slug), ['c2026'], 'padrão: só a temporada atual');
+  assert.deepEqual(r.tabela.map((l) => [l.piloto_id, l.total]), [[2, 25], [1, 18], [3, 15]]);
+  const r24 = rankingCampeonato(evs, { ano: '2024' });
+  assert.deepEqual(r24.tabela.map((l) => [l.piloto_id, l.total]), [[1, 25], [2, 18]], 'P3 não correu em 2024: fora da tabela do ano');
+  const h = rankingCampeonato(evs, { ano: 'todos' });
+  assert.equal(h.ano, 'todos');
+  assert.equal(h.eventos.length, 3);
+  assert.deepEqual(h.tabela.find((l) => l.piloto_id === 1).total, 18 + 25 + 18, 'história: P1 em 2020, 2024 e 2026');
+  const r20 = rankingCampeonato(evs, { ano: '2020' });
+  assert.equal(r20.tabela[0].piloto, P(3), 'quem corria como "Velho" em 2020 aparece com o nome de agora');
+  assert.equal(rankingCampeonato(evs, { ano: '1999' }).ano, '2026', 'ano sem corrida cai no atual');
+});
+
 test('títulos: edição da Copa no formato corridas dá título ao 1º; corridas avulsas (17/07) não', () => {
   const avulso = ev17([C1, C2, C3, C4]);
   assert.equal(classificacaoDoEvento(avulso).campeao, null, '17/07 não foi Copa');
