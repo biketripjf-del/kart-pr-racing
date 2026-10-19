@@ -249,7 +249,12 @@ function Pontos({ aba, setAba }) {
   const [regra, setRegra] = useState(false);
   // temporada (19/10): abre no ano atual; os botões trocam de ano ou mostram a história inteira
   const [ano, setAno] = useState(null);
-  useEffect(() => { api.get('/historico/ranking', { params: ano ? { ano } : {} }).then((x) => setR(x.data)).catch(() => setR({ eventos: [], tabela: [] })); }, [ano]);
+  // "Com descarte" (Brunner 19/10 19:00): prévia de como fica quando a próxima etapa entrar — descarte ligado, 0 nela
+  const [previa, setPrevia] = useState(false);
+  useEffect(() => {
+    api.get('/historico/ranking', { params: { ...(ano ? { ano } : {}), ...(previa ? { descarte: 'previa' } : {}) } })
+      .then((x) => setR(x.data)).catch(() => setR({ eventos: [], tabela: [] }));
+  }, [ano, previa]);
   // simulador da última etapa (19/10): o botão só aparece se há etapa pela frente no ano que está na tela
   const [proxima, setProxima] = useState(null);
   useEffect(() => { api.get('/historico/titulo').then((x) => setProxima(x.data.etapa)).catch(() => setProxima(null)); }, []);
@@ -274,7 +279,7 @@ function Pontos({ aba, setAba }) {
       {r.anos?.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {[...(r.temporadas || r.anos.map((a) => ({ ano: a }))), { ano: 'todos', nome: 'Toda a história' }].map((t) => (
-            <button key={t.ano} onClick={() => setAno(t.ano)}
+            <button key={t.ano} onClick={() => { setAno(t.ano); setPrevia(false); }}
               className={`px-3 py-1 rounded-full text-xs font-semibold border ${r.ano === t.ano ? 'bg-brand-dark text-white border-transparent' : 'bg-white text-tx2 border-[#d5dfeb]'}`}>
               {t.ano === 'todos' ? t.nome : t.nome ? `${t.nome} · ${t.ano}` : t.ano}
             </button>
@@ -286,6 +291,19 @@ function Pontos({ aba, setAba }) {
         {r.parcial && <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">parcial</span>}
       </div>
 
+      {proxima && String(proxima.data).slice(0, 4) === String(r.ano) && (
+        <div className="mb-3">
+          <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-white border border-[#d5dfeb]">
+            {[[false, 'Hoje'], [true, 'Com descarte']].map(([v, rot]) => (
+              <button key={rot} onClick={() => setPrevia(v)}
+                className={`py-1.5 rounded-lg text-[13px] font-semibold ${previa === v ? 'bg-brand-dark text-white' : 'text-tx2'}`}>{rot}</button>
+            ))}
+          </div>
+          {previa && r.previa && (
+            <p className="mt-2 text-[12px] text-tx2">Como fica a partir de {dataBR(r.previa.data).slice(0, 5)}, quando o descarte liga: cada um perde o pior dia anterior (riscado). O dia {dataBR(r.previa.data).slice(0, 5)} entra com 0 pra todos, até ser corrido.</p>
+          )}
+        </div>
+      )}
       {proxima && String(proxima.data).slice(0, 4) === String(r.ano) && (
         <Link to="/simulador" className="card mb-3 flex items-center gap-3 px-4 py-3 hover:bg-[#f3f6fa]">
           <span className="w-10 h-10 rounded-xl bg-[#e8eff7] text-brand flex items-center justify-center shrink-0"><Calculator size={20} /></span>
