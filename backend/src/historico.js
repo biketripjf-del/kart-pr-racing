@@ -131,13 +131,13 @@ export function classificacaoDoEvento({ slug, estado }) {
 // ---------- ranking do campeonato ----------
 // eventos: [{ slug, estado }] — evento de teste (estado.teste) não entra.
 // Pontuação estilo F1 (Brunner 19/10/2026: "go, 11º em diante leva 1 ponto + F1, falta zero"): mais pontos vence.
-// Quem faltou leva 0 e não perde nada além disso; corrida avulsa (formato 'corridas' sem copa: 17/07, 09/01) vale metade.
+// Quem faltou leva 0 e não perde nada além disso. Todas as corridas do ano valem igual (Brunner 19/10 16:15: "as corridas
+// avulsas do ano juntas formam a copa" — o "avulsa vale metade" das 15:25 caiu).
 // Antes era "colocação = pontos, menor soma vence, faltou = classificados + 1": quem não estava em 2020 carregava a falta
 // pra sempre e cada folha antiga que chegava empurrava todo mundo.
 export const PONTOS_F1 = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 export const PONTOS_DO_11_EM_DIANTE = 1;
-export const PESO_AVULSA = 0.5;
-export const pontosDaPosicao = (pos, peso = 1) => (PONTOS_F1[pos - 1] ?? PONTOS_DO_11_EM_DIANTE) * peso;
+export const pontosDaPosicao = (pos) => PONTOS_F1[pos - 1] ?? PONTOS_DO_11_EM_DIANTE;
 
 // Temporada (Brunner 19/10: "a copa é por ano, não por todas da história"; "deixa a opção de ver por toda história,
 // mas o padrão é a do ano"): `ano` = só os eventos daquele ano; 'todos' = a história inteira. Sem `ano` = o ano mais
@@ -146,7 +146,7 @@ export const anoDe = (c) => String(c.data || '').slice(0, 4);
 
 export function rankingCampeonato(eventos, { ano } = {}) {
   const todos = eventos.filter((e) => !e.estado.teste)
-    .map((e) => ({ ...classificacaoDoEvento(e), avulsa: e.estado.formato === 'corridas' && !e.estado.copa }))
+    .map((e) => classificacaoDoEvento(e))
     .filter((c) => c.linhas.length)
     .sort((a, b) => String(a.data).localeCompare(String(b.data)));
   const anos = [...new Set(todos.map(anoDe))].sort().reverse();
@@ -183,7 +183,7 @@ export function rankingCampeonato(eventos, { ano } = {}) {
     const colunas = validos.map((c) => {
       const pos = p.por_evento[c.slug];
       if (pos == null) return { evento: c.slug, pos: null, pontos: 0 };
-      const pontos = pontosDaPosicao(pos, c.avulsa ? PESO_AVULSA : 1);
+      const pontos = pontosDaPosicao(pos);
       disputados++; melhor = menor(melhor, pos); total += pontos;
       return { evento: c.slug, pos, pontos };
     });
@@ -208,9 +208,9 @@ export function rankingCampeonato(eventos, { ano } = {}) {
   return {
     ano: temporada ?? 'todos', anos, nome: temporada ? nomeCopa.get(temporada) ?? null : null,
     temporadas: anos.map((a) => ({ ano: a, nome: nomeCopa.get(a) ?? null })),
-    eventos: validos.map((c) => ({ slug: c.slug, titulo: c.titulo, data: c.data, completa: c.completa, n: c.linhas.length, criterio: c.criterio, avulsa: c.avulsa })),
+    eventos: validos.map((c) => ({ slug: c.slug, titulo: c.titulo, data: c.data, completa: c.completa, n: c.linhas.length, criterio: c.criterio })),
     parcial: validos.some((c) => !c.completa),
-    regra: 'Pontos como na Fórmula 1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · 10º 1 · do 11º em diante 1. Corrida avulsa (fora da Copa) vale metade. Quem não correu leva 0. Mais pontos vence.',
+    regra: 'Pontos como na Fórmula 1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · 10º 1 · do 11º em diante 1. Todas as corridas do ano valem igual e juntas formam a Copa do ano. Quem não correu leva 0. Mais pontos vence.',
     desempate: ['Melhor colocação num evento; se igual, a 2ª melhor, e assim por diante (quem tem um resultado a mais fica na frente)', 'Melhor volta na temporada', 'Ordem alfabética (só se tudo acima empatar)'],
     tabela,
   };
