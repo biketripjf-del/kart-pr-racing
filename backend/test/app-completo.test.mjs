@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { montarOrdem, fotografia, decidir, aplicarGrupos, PASSO_MS } from '../src/sorteio.js';
-import { participacoesDoEvento, classificacaoDoEvento, rankingCampeonato, numerosDoPiloto, rankingRitmo, recordesPorTracado, rivaisDoPiloto } from '../src/historico.js';
+import { participacoesDoEvento, classificacaoDoEvento, rankingCampeonato, numerosDoPiloto, rankingRitmo, recordesPorTracado, rivaisDoPiloto, pontosDaPosicao } from '../src/historico.js';
 
 const NOMES = Array.from({ length: 28 }, (_, i) => `Piloto ${String(i + 1).padStart(2, '0')}`);
 
@@ -179,20 +179,27 @@ test('histórico: na copa, a FINAL ordena o topo e o resto segue a soma das bate
   assert.equal(numerosDoPiloto([copa({ ...sess, FINAL: homolog(linhas(finalistas)) })], 'id:300').titulos, 0, 'Y1 venceu as baterias, mas não a final');
 });
 
-test('ranking: colocação = pontos; quem faltou ao evento leva nº de classificados + 1; teste não conta', () => {
-  const e1 = ev17([C1, C2, C3, C4]); // P2, P1, P3/P4 (4 classificados)
-  const e2 = { slug: 'e2', estado: { titulo: 'E2', data: '2026-10-23', formato: 'corridas', corridas_previstas: 1, pilotos: [{ nome: 'P1', piloto_id: 1 }, { nome: 'Novo', piloto_id: 9 }], corridas: [{ codigo: 'X', nome: 'X', linhas: linhas(['Novo', 'P1']) }] } };
+test('ranking F1 (19/10): 25-18-15-12-10-8-6-4-2-1, 11º em diante 1; avulsa vale metade; falta = 0; mais pontos vence', () => {
+  assert.deepEqual([1, 2, 3, 10, 11, 28].map((p) => pontosDaPosicao(p)), [25, 18, 15, 1, 1, 1]);
+  assert.equal(pontosDaPosicao(1, 0.5), 12.5);
+  assert.equal(pontosDaPosicao(15, 0.5), 0.5, 'avulsa: do 11º em diante leva 0,5');
+  const e1 = ev17([C1, C2, C3, C4]); // avulsa (sem copa): P2 1º, P1 2º, P3/P4
+  const e2 = { slug: 'e2', estado: { titulo: 'E2', data: '2026-10-23', formato: 'corridas', copa: true, corridas_previstas: 1, pilotos: [{ nome: 'P1', piloto_id: 1 }, { nome: 'Novo', piloto_id: 9 }], corridas: [{ codigo: 'X', nome: 'X', linhas: linhas(['Novo', 'P1']) }] } };
   const teste = { slug: 't', estado: { ...e2.estado, teste: true, titulo: 'T' } };
   const r = rankingCampeonato([e2, teste, e1]);
   assert.deepEqual(r.eventos.map((e) => e.slug), ['corridas-17-07', 'e2'], 'em ordem de data, sem o teste');
-  const p1 = r.tabela.find((l) => l.piloto_id === 1);
-  assert.equal(p1.total, 2 + 2, 'P1: 2º em 17/07 + 2º no E2');
-  const novo = r.tabela.find((l) => l.piloto_id === 9);
-  assert.equal(novo.total, (4 + 1) + 1, 'Novo faltou em 17/07 (4 classificados → 5) + venceu o E2');
-  const p2 = r.tabela.find((l) => l.piloto_id === 2);
-  assert.equal(p2.total, 1 + 3, 'P2 venceu 17/07 e faltou ao E2 (2 classificados → 3)');
-  assert.equal(r.tabela[0].piloto_id, 2, 'empate em 4: desempata a melhor colocação (P2 venceu um evento)');
-  assert.equal(r.tabela[1].piloto_id, 1);
+  assert.deepEqual(r.eventos.map((e) => e.avulsa), [true, false]);
+  const de = (id) => r.tabela.find((l) => l.piloto_id === id);
+  assert.equal(de(1).total, 9 + 18, 'P1: 2º na avulsa (18 ÷ 2) + 2º na Copa');
+  assert.equal(de(9).total, 0 + 25, 'Novo faltou à avulsa (0, sem punição) + venceu a Copa');
+  assert.equal(de(2).total, 12.5, 'P2 venceu a avulsa (25 ÷ 2) e faltou à Copa (0)');
+  assert.deepEqual(r.tabela.slice(0, 3).map((l) => l.piloto_id), [1, 9, 2], 'mais pontos na frente');
+  assert.deepEqual(de(2).colunas.map((c) => c.pontos), [12.5, 0]);
+  // empate em pontos: desempata a melhor colocação
+  const a = { slug: 'a', estado: { titulo: 'A', data: '2026-01-01', formato: 'corridas', copa: true, corridas_previstas: 1, pilotos: [{ nome: 'P1', piloto_id: 1 }, { nome: 'P2', piloto_id: 2 }], corridas: [{ codigo: 'X', nome: 'X', linhas: linhas(['P1', 'P2']) }] } };
+  const bb = { slug: 'b', estado: { ...a.estado, data: '2026-02-01', corridas: [{ codigo: 'X', nome: 'X', linhas: linhas(['P2', 'P1']) }] } };
+  const emp = rankingCampeonato([a, bb]);
+  assert.equal(emp.tabela[0].total, emp.tabela[1].total, '43 a 43');
 });
 
 test('títulos: edição da Copa no formato corridas dá título ao 1º; corridas avulsas (17/07) não', () => {

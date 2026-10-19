@@ -12,7 +12,7 @@ const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toL
 // cada linha: como ler o número e quem ganha (menor ou maior)
 const LINHAS = [
   ['Ranking', (d) => d.ranking?.pos, 'menor', (v) => `${v}º`],
-  ['Pontos no ranking', (d) => d.ranking?.total, 'menor'],
+  ['Pontos no ranking', (d) => d.ranking?.total, 'maior', (v) => v.toLocaleString('pt-BR')],
   ['Corridas', (d) => d.numeros.corridas_disputadas, 'maior'],
   ['Vitórias', (d) => d.numeros.vitorias, 'maior'],
   ['Pódios', (d) => d.numeros.podios, 'maior'],
