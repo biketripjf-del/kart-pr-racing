@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { q } from '../db.js';
 import { exigirAdmin } from '../auth.js';
 import { ah } from '../async.js';
-import { calcularQuadro, validarSessao, normalizar, SESSOES, STATUS } from '../aoVivo.js';
+import { calcularQuadro, validarSessao, normalizar, SESSOES, STATUS, msParaVolta } from '../aoVivo.js';
+import { recordesPorTracado } from '../historico.js';
 
 const router = Router();
 const CODIGOS = new Set(SESSOES.map((s) => s.codigo));
@@ -27,8 +28,20 @@ router.get('/:slug', ah(async (req, res) => {
     versao: linha.versao,
     atualizado_em: linha.atualizado_em,
     quadro: calcularQuadro(estado),
+    recorde: await recordeDoDia(req.params.slug, estado),
   });
 }));
+
+// recorde da pista no traçado do dia (dos OUTROS eventos) e se a melhor volta de hoje já o bateu.
+// Sem traçado definido no evento não há comparação: volta de traçado diferente não se compara.
+async function recordeDoDia(slug, estado) {
+  if (!estado.tracado) return null;
+  const { rows } = await q('SELECT slug, estado FROM ao_vivo');
+  const r = recordesPorTracado(rows, { exceto: slug }).find((x) => normalizar(x.tracado) === normalizar(estado.tracado));
+  const hoje = calcularQuadro(estado).melhor_volta_do_dia;
+  const anterior = r ? { piloto: r.recorde.piloto, mv_ms: r.recorde.mv_ms, volta: msParaVolta(r.recorde.mv_ms), data: r.recorde.data } : null;
+  return { tracado: estado.tracado, anterior, quebrado: !!(anterior && hoje && hoje.mv_ms < anterior.mv_ms), hoje: hoje || null };
+}
 
 // admin: estado inteiro (cria o evento ou troca pilotos/grupos/horários)
 router.put('/:slug', exigirAdmin, ah(async (req, res) => {
@@ -52,6 +65,19 @@ router.put('/:slug', exigirAdmin, ah(async (req, res) => {
     [req.params.slug, JSON.stringify(novo)]
   );
   res.json({ ok: true, versao: rows[0].versao });
+}));
+
+// admin: traçado do evento (o recorde do dia compara só com o mesmo traçado). Vazio = sem comparação.
+router.put('/:slug/tracado', exigirAdmin, ah(async (req, res) => {
+  const atual = await lerEstado(req.params.slug);
+  if (!atual) return res.status(404).json({ erro: 'evento_nao_encontrado' });
+  const tracado = String(req.body?.tracado || '').trim() || null;
+  const { rows } = await q(
+    `UPDATE ao_vivo SET estado = $2::jsonb, versao = versao + 1, atualizado_em = now() WHERE slug = $1 AND versao = $3 RETURNING versao`,
+    [req.params.slug, JSON.stringify({ ...atual.estado, tracado }), atual.versao]
+  );
+  if (!rows[0]) return res.status(409).json({ erro: 'versao_mudou' });
+  res.json({ ok: true, versao: rows[0].versao, tracado });
 }));
 
 // admin: liga cada piloto do evento ao cadastro (pilotos.id). Casa por nome/apelido do evento contra nome e

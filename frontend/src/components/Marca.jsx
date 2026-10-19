@@ -104,6 +104,8 @@ export const volta = (ms) => {
   return min > 0 ? `${min}:${seg}` : seg;
 };
 
+// Ritmo (GO 19/10/2026): quanto o piloto fica atrás do mais rápido da corrida (índice 100 = foi o mais rápido).
+export const atras = (ritmo) => (ritmo == null ? '—' : `+${Math.max(0, ritmo - 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`);
 export const dataBR = (iso) => (iso ? new Date(`${String(iso).slice(0, 10)}T12:00:00-03:00`).toLocaleDateString('pt-BR', {
   day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo',
 }) : '');

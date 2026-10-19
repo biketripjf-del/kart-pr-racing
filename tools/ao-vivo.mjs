@@ -8,6 +8,7 @@
 //   tomada  <slug> <CODIGO> <folha.json>   lança a tomada de tempo da corrida (vira o grid)
 //   sessao  <slug> <CODIGO> <folha.json> [status]   lança o resultado da corrida (nomes da folha são resolvidos)
 //   status  <slug> <CODIGO> <status>       aguardando | ao_vivo | provisorio | homologado
+//   tracado <slug> <texto>                 traçado do evento (ex.: 6,5 HP) — o quadro compara a melhor volta do dia com o recorde dele
 //   vincular <slug>                        liga cada piloto do evento ao cadastro (cria quem não existe)
 //   corrida <slug> <CODIGO> <folha.json>   folha de uma corrida em evento de histórico (formato 'corridas')
 //   sorteio <slug> <ISO-com-fuso>          marca o sorteio dos grupos (ex.: 2026-10-20T20:00:00-03:00) · 'cancelar' cancela
@@ -83,6 +84,11 @@ async function main() {
     console.log(r.status, JSON.stringify(r.json));
     const v = await http('GET', `/api/ao-vivo/${slug}`);
     return imprimir(v.json, codigo);
+  }
+  if (cmd === 'tracado') {
+    const r = await http('PUT', `/api/ao-vivo/${slug}/tracado`, { tracado: resto.join(' ') }, await token());
+    console.log(r.status, JSON.stringify(r.json));
+    return;
   }
   if (cmd === 'vincular') {
     const r = await http('POST', `/api/ao-vivo/${slug}/vincular`, {}, await token());

@@ -23,6 +23,20 @@ function indicePilotos(estado) {
   return m;
 }
 
+// ---------- índice de ritmo (Brunner 19/10: GO) ----------
+// Melhor volta do piloto ÷ melhor volta daquela corrida × 100: 100 = o mais rápido da corrida, 101,5 = 1,5% mais lento.
+// Compara edições, traçados e dias diferentes na mesma régua. Corrida com menos de 3 voltas válidas não mede ritmo
+// (com 1 ou 2 pilotos o "mais rápido" não diz nada).
+export const MIN_VOLTAS_RITMO = 3;
+function melhorDaSessao(res) {
+  const mvs = res.filter((l) => !l.ausente && l.mv_ms != null).map((l) => l.mv_ms);
+  return mvs.length >= MIN_VOLTAS_RITMO ? Math.min(...mvs) : null;
+}
+function ritmoDaVolta(mv, melhor) {
+  return mv != null && melhor ? Math.round((mv / melhor) * 10000) / 100 : null;
+}
+const media2 = (xs) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 100) / 100 : null);
+
 // ---------- participações: 1 linha por piloto por corrida ----------
 export function participacoesDoEvento({ slug, estado }) {
   const pil = indicePilotos(estado);
@@ -36,19 +50,22 @@ export function participacoesDoEvento({ slug, estado }) {
       piloto: l.piloto, piloto_id: p?.piloto_id ?? null, chave: chaveDe(p, l.piloto),
       pos: l.ausente ? null : l.pos_oficial, ausente: !!l.ausente, kart: l.kart ?? null,
       mv_ms: l.mv_ms ?? null, voltas: l.voltas ?? null,
+      ritmo: ritmoDaVolta(l.mv_ms, sess.melhor),
     });
   };
   if (estado.formato === 'corridas') {
     for (const c of estado.corridas || []) {
       const res = resultadoDaSessao(c.linhas || [], [], { contarAusentes: false });
-      for (const l of res) push({ codigo: c.codigo, nome: c.nome, tipo: 'corrida', tracado: c.tracado, hora: c.hora, n: res.length }, l);
+      const melhor = melhorDaSessao(res);
+      for (const l of res) push({ codigo: c.codigo, nome: c.nome, tipo: 'corrida', tracado: c.tracado, hora: c.hora, n: res.length, melhor }, l);
     }
     return out;
   }
   const q = calcularQuadro(estado);
   for (const s of Object.values(q.sessoes)) {
     const n = s.resultado.filter((l) => !l.ausente).length;
-    for (const l of s.resultado) push({ codigo: s.codigo, nome: s.nome, tipo: s.tipo, n }, l);
+    const melhor = melhorDaSessao(s.resultado);
+    for (const l of s.resultado) push({ codigo: s.codigo, nome: s.nome, tipo: s.tipo, n, melhor }, l);
   }
   return out;
 }
@@ -160,6 +177,11 @@ export function numerosDoPiloto(eventos, chave) {
     return l ? { slug: c.slug, titulo: c.titulo, data: c.data, pos: l.pos, de: c.linhas.length, completa: c.completa, campeao: c.campeao === l.piloto } : null;
   }).filter(Boolean);
   const soma = correu.reduce((s, c) => s + c.pos, 0);
+  const comRitmo = correu.filter((c) => c.ritmo != null);
+  const ritmoPorEvento = [...new Set(comRitmo.map((c) => c.evento))].map((slug) => {
+    const cs = comRitmo.filter((c) => c.evento === slug);
+    return { evento: slug, titulo: cs[0].titulo, data: cs[0].data, ritmo: media2(cs.map((c) => c.ritmo)), corridas: cs.length };
+  });
   return {
     corridas_disputadas: correu.length,
     faltas: corridas.length - correu.length,
@@ -171,7 +193,80 @@ export function numerosDoPiloto(eventos, chave) {
     finais: correu.filter((c) => c.tipo === 'final').length,
     titulos: eventosDoPiloto.filter((e) => e.campeao).length,
     melhor_volta_por_tracado: voltasRapidas,
+    ritmo_medio: media2(comRitmo.map((c) => c.ritmo)),
+    ritmo_por_evento: ritmoPorEvento,
+    rivais: rivaisDoPiloto(validos, chave),
     eventos: eventosDoPiloto,
     corridas,
   };
+}
+
+// ---------- ranking de ritmo ----------
+// Média do índice de ritmo em todas as corridas (menor = mais rápido). Quem tem só 1 corrida aparece, marcado.
+export function rankingRitmo(eventos) {
+  const validos = eventos.filter((e) => !e.estado.teste);
+  const acc = new Map();
+  for (const p of validos.flatMap((e) => participacoesDoEvento(e))) {
+    if (p.ausente || p.ritmo == null) continue;
+    const a = acc.get(p.chave) || { chave: p.chave, piloto: p.piloto, piloto_id: p.piloto_id, ritmos: [], vezes_mais_rapido: 0 };
+    a.ritmos.push(p.ritmo);
+    if (p.ritmo === 100) a.vezes_mais_rapido++;
+    if (p.piloto_id != null) a.piloto_id = p.piloto_id;
+    acc.set(p.chave, a);
+  }
+  const tabela = [...acc.values()].map(({ ritmos, ...a }) => ({ ...a, ritmo: media2(ritmos), corridas: ritmos.length, melhor_ritmo: Math.min(...ritmos) }))
+    .sort((a, b) => a.ritmo - b.ritmo || b.corridas - a.corridas || a.piloto.localeCompare(b.piloto));
+  tabela.forEach((l, i) => { l.pos = i + 1; });
+  return {
+    regra: 'Melhor volta do piloto ÷ melhor volta da corrida × 100. 100 = o mais rápido da corrida; 101,5 = 1,5% mais lento. A média de todas as corridas ordena a lista (menor = mais rápido).',
+    tabela,
+  };
+}
+
+// ---------- recordes por traçado ----------
+// Volta mais rápida já registrada em cada traçado (top 3 de pilotos diferentes). Volta de traçado diferente não se compara.
+export function recordesPorTracado(eventos, { exceto } = {}) {
+  const validos = eventos.filter((e) => !e.estado.teste && e.slug !== exceto);
+  const porTracado = new Map();
+  for (const p of validos.flatMap((e) => participacoesDoEvento(e))) {
+    if (p.ausente || p.mv_ms == null || !p.tracado) continue;
+    // "6,5 HP" e "6,5 hp" são o mesmo traçado: agrupa pelo nome normalizado, exibe a 1ª grafia
+    const k = normalizar(p.tracado);
+    const g = porTracado.get(k) || { tracado: p.tracado, lista: [] };
+    g.lista.push({ piloto: p.piloto, piloto_id: p.piloto_id, chave: p.chave, mv_ms: p.mv_ms, evento: p.evento, titulo: p.titulo, data: p.data, sessao: p.sessao_nome });
+    porTracado.set(k, g);
+  }
+  return [...porTracado.values()].map(({ tracado, lista }) => {
+    const melhores = [];
+    for (const v of lista.sort((a, b) => a.mv_ms - b.mv_ms || String(a.data).localeCompare(String(b.data)))) {
+      if (!melhores.some((m) => m.chave === v.chave)) melhores.push(v);
+      if (melhores.length === 3) break;
+    }
+    return { tracado, recorde: melhores[0], top: melhores };
+  }).sort((a, b) => a.tracado.localeCompare(b.tracado));
+}
+
+// ---------- rivais: confronto direto nas corridas em comum ----------
+// Para cada piloto que correu a MESMA corrida: quem chegou na frente. Ausente não conta (não houve disputa).
+export function rivaisDoPiloto(eventos, chave) {
+  const porSessao = new Map();
+  for (const p of eventos.filter((e) => !e.estado.teste).flatMap((e) => participacoesDoEvento(e))) {
+    if (p.ausente || p.pos == null) continue;
+    const k = `${p.evento}|${p.sessao}`;
+    (porSessao.get(k) || porSessao.set(k, []).get(k)).push(p);
+  }
+  const acc = new Map();
+  for (const linhas of porSessao.values()) {
+    const eu = linhas.find((l) => l.chave === chave);
+    if (!eu) continue;
+    for (const o of linhas) {
+      if (o.chave === chave) continue;
+      const a = acc.get(o.chave) || { chave: o.chave, piloto: o.piloto, piloto_id: o.piloto_id, encontros: 0, vitorias: 0, derrotas: 0 };
+      a.encontros++;
+      if (eu.pos < o.pos) a.vitorias++; else a.derrotas++;
+      if (o.piloto_id != null) a.piloto_id = o.piloto_id;
+      acc.set(o.chave, a);
+    }
+  }
+  return [...acc.values()].sort((a, b) => b.encontros - a.encontros || Math.abs(a.vitorias - a.derrotas) - Math.abs(b.vitorias - b.derrotas) || a.piloto.localeCompare(b.piloto));
 }

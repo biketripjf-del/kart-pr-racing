@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Trophy, Timer, Flag, Medal, Instagram, PencilLine, Swords } from 'lucide-react';
+import { Trophy, Timer, Flag, Medal, Instagram, PencilLine, Swords, Gauge } from 'lucide-react';
 import { api } from '../api.js';
-import { Casca, Avatar, volta, dataBR } from '../components/Marca.jsx';
+import { Casca, Avatar, volta, dataBR, atras } from '../components/Marca.jsx';
 
 function Numero({ rot, valor, icone: Icone }) {
   return (
@@ -57,6 +57,48 @@ export default function Piloto() {
             ))}
           </div>
           <div className="mt-2 text-[11px] text-tx3">Separado por traçado: volta de traçado diferente não se compara.</div>
+        </div>
+      )}
+
+      {n.ritmo_medio != null && (
+        <div className="card mt-4 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-semibold"><Gauge size={16} className="text-[color:var(--color-gold)]" /> Ritmo</div>
+            <b className="tabular-nums">{atras(n.ritmo_medio)}</b>
+          </div>
+          <div className="mt-1 text-[11px] text-tx3">Média de quanto fica atrás da volta mais rápida de cada corrida.</div>
+          {n.ritmo_por_evento.length > 1 && (
+            <div className="mt-2 space-y-1 text-sm">
+              {n.ritmo_por_evento.map((e) => (
+                <div key={e.evento} className="flex justify-between">
+                  <span className="text-tx">{dataBR(e.data)} · {e.titulo.replace(/\s*·.*$/, '')}</span>
+                  <span className="tabular-nums">{atras(e.ritmo)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <Link to="/ranking" state={{ aba: 'ritmo' }} className="mt-2 block text-xs text-brand">Ver o ranking de ritmo</Link>
+        </div>
+      )}
+
+      {n.rivais.length > 0 && (
+        <div className="card mt-4 p-4">
+          <div className="flex items-center gap-2 font-semibold"><Swords size={16} className="text-[color:var(--color-gold)]" /> Rivais</div>
+          <div className="mt-1 text-[11px] text-tx3">Quem chegou na frente nas corridas que fizeram juntos.</div>
+          <div className="mt-2 divide-y divide-[#e3e9f1]">
+            {n.rivais.slice(0, 8).map((r) => {
+              const cor = r.vitorias > r.derrotas ? 'text-green-700' : r.vitorias < r.derrotas ? 'text-red-600' : 'text-tx2';
+              const linha = (
+                <div className="flex items-center justify-between py-1.5 text-sm">
+                  <span className="truncate">{r.piloto}</span>
+                  <span className="shrink-0 tabular-nums"><b className={cor}>{r.vitorias} × {r.derrotas}</b> <span className="text-[11px] text-tx3">em {r.encontros}</span></span>
+                </div>
+              );
+              return r.piloto_id
+                ? <Link key={r.chave} to={`/comparar?p=${p.id},${r.piloto_id}`} className="block hover:bg-[#f3f6fa]">{linha}</Link>
+                : <div key={r.chave}>{linha}</div>;
+            })}
+          </div>
         </div>
       )}
 
