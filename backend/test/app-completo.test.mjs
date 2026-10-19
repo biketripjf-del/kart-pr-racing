@@ -220,6 +220,14 @@ test('ranking por temporada (19/10): padrão = o ano mais recente; ?ano=2024 só
   const r20 = rankingCampeonato(evs, { ano: '2020' });
   assert.equal(r20.tabela[0].piloto, P(3), 'quem corria como "Velho" em 2020 aparece com o nome de agora');
   assert.equal(rankingCampeonato(evs, { ano: '1999' }).ano, '2026', 'ano sem corrida cai no atual');
+  // nome da temporada = o da Copa do ano, mesmo antes de a Copa correr (o evento do dia 23 já existe, sem folha)
+  const avulsa = { slug: 'a26', estado: { titulo: 'Corridas de 09/01', data: '2026-01-09', formato: 'corridas', corridas_previstas: 1,
+    pilotos: [{ nome: P(1), piloto_id: 1 }], corridas: [{ codigo: 'X', nome: 'X', linhas: linhas([P(1)]) }] } };
+  const copa3 = { slug: 'copa-3', estado: { titulo: '3ª Copa · Grande Prêmio', data: '2026-10-23', pilotos: [], sessoes: {} } };
+  const n = rankingCampeonato([evs[0], evs[1], avulsa, copa3]);
+  assert.equal(n.nome, '3ª Copa', 'a avulsa de 2026 já conta para a 3ª Copa');
+  assert.deepEqual(n.temporadas, [{ ano: '2026', nome: '3ª Copa' }, { ano: '2024', nome: 'c2024' }, { ano: '2020', nome: 'c2020' }]);
+  assert.equal(rankingCampeonato([avulsa]).nome, null, 'ano sem Copa: sem nome');
 });
 
 test('títulos: edição da Copa no formato corridas dá título ao 1º; corridas avulsas (17/07) não', () => {

@@ -70,7 +70,7 @@ router.get('/pilotos', ah(async (req, res) => {
   for (const e of evs) {
     for (const p of e.estado.pilotos || []) {
       if (p.piloto_id == null || vistos.has(p.piloto_id)) continue;
-      vistos.set(p.piloto_id, { piloto_id: p.piloto_id, nome: p.nome, ranking: posRanking.get(`id:${p.piloto_id}`) ?? null, ano: r.ano, ja_correu: correu.has(`id:${p.piloto_id}`) });
+      vistos.set(p.piloto_id, { piloto_id: p.piloto_id, nome: p.nome, ranking: posRanking.get(`id:${p.piloto_id}`) ?? null, ano: r.ano, temporada: r.nome || `temporada ${r.ano}`, ja_correu: correu.has(`id:${p.piloto_id}`) });
     }
   }
   const c = await cartoes([...vistos.keys()]);
@@ -99,7 +99,7 @@ router.get('/piloto/:id', ah(async (req, res) => {
       id: p.id, nome: nomeNoEvento || p.nome, apelido: p.apelido, cidade: p.cidade, instagram: p.instagram,
       foto_v: p.tem_foto && p.foto_em ? new Date(p.foto_em).getTime() : null,
     },
-    ranking: noRanking ? { ano: r.ano, pos: noRanking.pos, de: r.tabela.length, total: noRanking.total, parcial: r.parcial } : null,
+    ranking: noRanking ? { ano: r.ano, nome: r.nome, pos: noRanking.pos, de: r.tabela.length, total: noRanking.total, parcial: r.parcial } : null,
     ranking_historia: naHistoria ? { pos: naHistoria.pos, de: h.tabela.length, total: naHistoria.total } : null,
     numeros: numerosDoPiloto(evs, `id:${id}`),
   });

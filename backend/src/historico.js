@@ -150,6 +150,13 @@ export function rankingCampeonato(eventos, { ano } = {}) {
     .filter((c) => c.linhas.length)
     .sort((a, b) => String(a.data).localeCompare(String(b.data)));
   const anos = [...new Set(todos.map(anoDe))].sort().reverse();
+  // a temporada leva o nome da Copa do ano (Brunner 19/10: "3ª Copa é o nome da copa 2026; a 2ª foi 2024 e a 1ª 2020").
+  // Vale também antes da Copa correr: o evento do dia 23 já existe e dá o nome a 2026.
+  const nomeCopa = new Map();
+  for (const e of eventos) {
+    if (e.estado.teste || !(e.estado.copa || e.estado.formato !== 'corridas')) continue;
+    nomeCopa.set(anoDe(e.estado), String(e.estado.titulo || '').split(' · ')[0].trim() || null);
+  }
   const temporada = ano === 'todos' ? null : (ano && anos.includes(String(ano)) ? String(ano) : anos[0] ?? null);
   const validos = temporada ? todos.filter((c) => anoDe(c) === temporada) : todos;
   const nomes = new Map();
@@ -179,7 +186,8 @@ export function rankingCampeonato(eventos, { ano } = {}) {
     || b.eventos_disputados - a.eventos_disputados || a.piloto.localeCompare(b.piloto));
   tabela.forEach((l, i) => { l.pos = i + 1; });
   return {
-    ano: temporada ?? 'todos', anos,
+    ano: temporada ?? 'todos', anos, nome: temporada ? nomeCopa.get(temporada) ?? null : null,
+    temporadas: anos.map((a) => ({ ano: a, nome: nomeCopa.get(a) ?? null })),
     eventos: validos.map((c) => ({ slug: c.slug, titulo: c.titulo, data: c.data, completa: c.completa, n: c.linhas.length, criterio: c.criterio, avulsa: c.avulsa })),
     parcial: validos.some((c) => !c.completa),
     regra: 'Pontos como na Fórmula 1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · 10º 1 · do 11º em diante 1. Corrida avulsa (fora da Copa) vale metade. Quem não correu leva 0. Mais pontos vence; empate: melhor colocação.',
