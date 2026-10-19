@@ -130,9 +130,18 @@ export function classificacaoDoEvento({ slug, estado }) {
 
 // ---------- ranking do campeonato ----------
 // eventos: [{ slug, estado }] — evento de teste (estado.teste) não entra.
+// Pontuação estilo F1 (Brunner 19/10/2026: "go, 11º em diante leva 1 ponto + F1, falta zero"): mais pontos vence.
+// Quem faltou leva 0 e não perde nada além disso; corrida avulsa (formato 'corridas' sem copa: 17/07, 09/01) vale metade.
+// Antes era "colocação = pontos, menor soma vence, faltou = classificados + 1": quem não estava em 2020 carregava a falta
+// pra sempre e cada folha antiga que chegava empurrava todo mundo.
+export const PONTOS_F1 = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+export const PONTOS_DO_11_EM_DIANTE = 1;
+export const PESO_AVULSA = 0.5;
+export const pontosDaPosicao = (pos, peso = 1) => (PONTOS_F1[pos - 1] ?? PONTOS_DO_11_EM_DIANTE) * peso;
+
 export function rankingCampeonato(eventos) {
   const validos = eventos.filter((e) => !e.estado.teste)
-    .map((e) => classificacaoDoEvento(e))
+    .map((e) => ({ ...classificacaoDoEvento(e), avulsa: e.estado.formato === 'corridas' && !e.estado.copa }))
     .filter((c) => c.linhas.length)
     .sort((a, b) => String(a.data).localeCompare(String(b.data)));
   const pilotos = new Map();
@@ -149,20 +158,20 @@ export function rankingCampeonato(eventos) {
     let total = 0; let melhor = null; let disputados = 0;
     const colunas = validos.map((c) => {
       const pos = p.por_evento[c.slug];
-      if (pos != null) { disputados++; melhor = menor(melhor, pos); total += pos; return { evento: c.slug, pos, pontos: pos }; }
-      const pontos = c.linhas.length + 1;
-      total += pontos;
-      return { evento: c.slug, pos: null, pontos };
+      if (pos == null) return { evento: c.slug, pos: null, pontos: 0 };
+      const pontos = pontosDaPosicao(pos, c.avulsa ? PESO_AVULSA : 1);
+      disputados++; melhor = menor(melhor, pos); total += pontos;
+      return { evento: c.slug, pos, pontos };
     });
     return { piloto: p.piloto, piloto_id: p.piloto_id, chave: p.chave, total, melhor_colocacao: melhor, eventos_disputados: disputados, colunas };
   });
-  tabela.sort((a, b) => a.total - b.total || a.melhor_colocacao - b.melhor_colocacao
+  tabela.sort((a, b) => b.total - a.total || a.melhor_colocacao - b.melhor_colocacao
     || b.eventos_disputados - a.eventos_disputados || a.piloto.localeCompare(b.piloto));
   tabela.forEach((l, i) => { l.pos = i + 1; });
   return {
-    eventos: validos.map((c) => ({ slug: c.slug, titulo: c.titulo, data: c.data, completa: c.completa, n: c.linhas.length, criterio: c.criterio })),
+    eventos: validos.map((c) => ({ slug: c.slug, titulo: c.titulo, data: c.data, completa: c.completa, n: c.linhas.length, criterio: c.criterio, avulsa: c.avulsa })),
     parcial: validos.some((c) => !c.completa),
-    regra: 'Colocação no evento = pontos (1º = 1). Menor soma vence. Quem não correu um evento leva o nº de classificados dele + 1.',
+    regra: 'Pontos como na Fórmula 1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · 10º 1 · do 11º em diante 1. Corrida avulsa (fora da Copa) vale metade. Quem não correu leva 0. Mais pontos vence; empate: melhor colocação.',
     tabela,
   };
 }

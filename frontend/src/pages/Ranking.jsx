@@ -6,7 +6,9 @@ import { Casca, Avatar, dataBR, volta, atras } from '../components/Marca.jsx';
 
 // Ranking do campeonato (Brunner 14/10: "tem que ser lista (...) tem que ter o podio. igual ao ranking do app do pedal
 // mas com estilo de corrida"). Pódio 2-1-3 em degraus com zebra de pista; o resto como torre de cronometragem.
-// Regra: colocação em cada evento = pontos (1º = 1), menor soma vence.
+// Regra (19/10/2026): pontos estilo F1 por evento, avulsa vale metade, falta = 0, mais pontos vence (historico.js).
+
+const pts = (n) => Number(n).toLocaleString('pt-BR');
 
 const ZEBRA = { backgroundImage: 'repeating-linear-gradient(90deg, #d0312d 0 14px, #ffffff 14px 28px)' };
 
@@ -20,7 +22,7 @@ function Degrau({ l, pos, rotulo }) {
         <div className="rounded-full bg-white p-[2px]"><Avatar id={l.piloto_id} v={l.foto_v} nome={l.piloto} tam={tam} /></div>
       </div>
       <div className="mt-1.5 text-[13px] font-bold leading-tight text-center line-clamp-2 px-1">{l.piloto}</div>
-      <div className="text-[11px] text-tx2 tabular-nums">{rotulo ?? `${l.total} pts`}</div>
+      <div className="text-[11px] text-tx2 tabular-nums">{rotulo ?? `${pts(l.total)} pts`}</div>
       <div className={`mt-2 w-full ${alto} rounded-t-lg bg-[color:var(--color-brand-dark)] relative overflow-hidden flex items-start justify-center`}>
         <div className="absolute top-0 inset-x-0 h-1.5" style={ZEBRA} />
         <span className="display text-white/95 mt-3 text-3xl">{pos}</span>
@@ -31,7 +33,7 @@ function Degrau({ l, pos, rotulo }) {
 }
 
 function Linha({ l, lider, eventos }) {
-  const gap = l.total - lider;
+  const gap = lider - l.total;
   const corpo = (
     <div className="flex items-center gap-3 px-3 py-2.5">
       <span className="w-8 h-8 rounded-md bg-[#eef3f9] border border-[#d5dfeb] flex items-center justify-center display text-[15px] text-brand-dark tabular-nums shrink-0">{l.pos}</span>
@@ -41,13 +43,13 @@ function Linha({ l, lider, eventos }) {
         <span className="block font-semibold truncate">{l.piloto}</span>
         <span className="block text-[11px] text-tx2 truncate">
           {l.colunas.map((c, i) => (
-            <span key={c.evento}>{i ? ' · ' : ''}{dataBR(eventos[i]?.data).slice(0, 5)}: {c.pos != null ? `${c.pos}º` : 'não correu'}</span>
+            <span key={c.evento}>{i ? ' · ' : ''}{dataBR(eventos[i]?.data).slice(0, 5)}: {c.pos != null ? `${c.pos}º (${pts(c.pontos)})` : 'não correu'}</span>
           ))}
         </span>
       </span>
       <span className="text-right shrink-0">
-        <span className="block font-extrabold tabular-nums text-brand-dark leading-none">{l.total}<span className="text-[10px] font-semibold text-tx3 ml-0.5">pts</span></span>
-        <span className="block text-[11px] text-tx3 tabular-nums mt-0.5">{gap ? `+${gap}` : 'líder'}</span>
+        <span className="block font-extrabold tabular-nums text-brand-dark leading-none">{pts(l.total)}<span className="text-[10px] font-semibold text-tx3 ml-0.5">pts</span></span>
+        <span className="block text-[11px] text-tx3 tabular-nums mt-0.5">{gap ? `−${pts(gap)}` : 'líder'}</span>
       </span>
       {l.piloto_id && <ChevronRight size={16} className="text-tx3 shrink-0" />}
     </div>
@@ -275,7 +277,7 @@ function Pontos({ aba, setAba }) {
       {regra && (
         <div className="mt-2 text-[12px] text-tx2 space-y-1 card p-3">
           <p>{r.regra}</p>
-          {r.eventos.map((e) => <p key={e.slug}><b className="text-tx">{dataBR(e.data)} · {curto(e.titulo)}</b>: {e.n} classificados ({e.criterio}).</p>)}
+          {r.eventos.map((e) => <p key={e.slug}><b className="text-tx">{dataBR(e.data)} · {curto(e.titulo)}</b>: {e.n} classificados{e.avulsa ? ', avulsa (vale metade)' : ''} ({e.criterio}).</p>)}
         </div>
       )}
     </Casca>
