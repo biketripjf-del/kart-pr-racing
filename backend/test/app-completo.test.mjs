@@ -205,6 +205,18 @@ test('títulos: edição da Copa no formato corridas dá título ao 1º; corrida
   assert.equal(numerosDoPiloto([copa], 'id:1').titulos, 0, 'só o 1º leva título');
   const parcial = { slug: 'copa-x', estado: { ...copa.estado, corridas: [C1, C2] } };
   assert.equal(classificacaoDoEvento(parcial).campeao, null, 'Copa sem todas as folhas ainda não tem campeão');
+  // campeão oficial informado pela organização vence a soma (2ª Copa, 19/10); o resto segue a soma
+  const pelaSoma = classificacaoDoEvento(copa).linhas.map((l) => l.piloto);
+  const of = { slug: 'copa-2', estado: { ...copa.estado, campeao_oficial: pelaSoma[2] } };
+  const c = classificacaoDoEvento(of);
+  assert.equal(c.campeao, pelaSoma[2]);
+  assert.deepEqual(c.linhas.map((l) => l.piloto), [pelaSoma[2], pelaSoma[0], pelaSoma[1], ...pelaSoma.slice(3)]);
+  assert.deepEqual(c.linhas.map((l) => l.pos), pelaSoma.map((_, i) => i + 1));
+  assert.match(c.criterio, /oficial/);
+  const idOf = c.linhas[0].piloto_id;
+  assert.equal(numerosDoPiloto([of], `id:${idOf}`).titulos, 1, 'o campeão oficial leva o título');
+  assert.equal(numerosDoPiloto([of], 'id:2').titulos, 0, 'o 1º da soma perde o título');
+  assert.equal(classificacaoDoEvento({ slug: 'copa-x', estado: { ...parcial.estado, campeao_oficial: pelaSoma[2] } }).campeao, null, 'parcial segue sem campeão');
 });
 
 // ---------- ritmo, recordes, rivais (GO 19/10/2026) ----------
