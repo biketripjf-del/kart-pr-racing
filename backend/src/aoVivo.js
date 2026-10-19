@@ -4,7 +4,11 @@
 //
 // Regra que vale = ÁUDIO do Emmanuel (organizador) no grupo, 14/10/2026 13:17–13:19 BRT
 // ("o que vale é o audio do emmanuel" — Brunner, 14:02 BRT). Onde o áudio cala, vale o texto do Brunner.
-//  - 4 baterias (grupos A e B, cada piloto corre 2) + 5ª corrida, a final, com os 14 melhores.
+//  - 4 baterias + 5ª corrida, a final, com os 14 melhores. Cada piloto corre 2 baterias.
+//  - Formato das baterias = opção A (Brunner 19/10/2026): o sorteio faz 4 blocos de 7 (W, X, Y, Z) e as
+//    baterias MISTURAM os blocos — rodada 1: W+X e Y+Z; rodada 2: W+Y e X+Z. Cada piloto enfrenta 20 dos
+//    27 rivais (no formato antigo, Grupo A × Grupo B, eram os mesmos 13), e o corte dos 14 deixa de
+//    comparar dois grupos que nunca se cruzaram. Custo: os 7 do bloco Y correm a 2ª e a 3ª em seguida.
 //  - Antes de cada corrida, tomada de tempo (~10 voltas), qualify NORMAL: melhor volta larga em 1º.
 //    Nada de grid invertido ("não é produtivo").
 //  - "A sua posição é o número de pontos que você fez": 1º = 1 ponto, 5º = 5. Menor soma vence.
@@ -13,13 +17,18 @@
 //    (Brunner 14/10 14:41 BRT: a soma do campeão "não inclui" a final — vence quem ganhar a final).
 //  - Punição do árbitro: 3 posições no resultado; reincidência de largada queimada = fim de fila (texto).
 
+export const BLOCOS = ['W', 'X', 'Y', 'Z'];
+// n = rodada: cada bloco aparece uma vez em cada rodada (a rodada 1 é a "B1" do piloto, a 2 é a "B2").
 export const SESSOES = [
-  { codigo: 'B1_A', nome: 'Bateria 1 · Grupo A', curto: 'Bateria 1-A', grupo: 'A', tipo: 'bateria', n: 1 },
-  { codigo: 'B1_B', nome: 'Bateria 1 · Grupo B', curto: 'Bateria 1-B', grupo: 'B', tipo: 'bateria', n: 1 },
-  { codigo: 'B2_A', nome: 'Bateria 2 · Grupo A', curto: 'Bateria 2-A', grupo: 'A', tipo: 'bateria', n: 2 },
-  { codigo: 'B2_B', nome: 'Bateria 2 · Grupo B', curto: 'Bateria 2-B', grupo: 'B', tipo: 'bateria', n: 2 },
-  { codigo: 'FINAL', nome: 'GRANDE FINAL', curto: 'Final', grupo: null, tipo: 'final' },
+  { codigo: 'B1_WX', nome: 'Bateria 1 · W + X', curto: 'Bateria 1', blocos: ['W', 'X'], tipo: 'bateria', n: 1 },
+  { codigo: 'B2_YZ', nome: 'Bateria 2 · Y + Z', curto: 'Bateria 2', blocos: ['Y', 'Z'], tipo: 'bateria', n: 1 },
+  { codigo: 'B3_WY', nome: 'Bateria 3 · W + Y', curto: 'Bateria 3', blocos: ['W', 'Y'], tipo: 'bateria', n: 2 },
+  { codigo: 'B4_XZ', nome: 'Bateria 4 · X + Z', curto: 'Bateria 4', blocos: ['X', 'Z'], tipo: 'bateria', n: 2 },
+  { codigo: 'FINAL', nome: 'GRANDE FINAL', curto: 'Final', blocos: null, tipo: 'final' },
 ];
+const BATERIAS = SESSOES.filter((d) => d.tipo === 'bateria');
+// a bateria da rodada `n` em que o bloco `g` corre
+const bateriaDoBloco = (g, n) => BATERIAS.find((d) => d.n === n && d.blocos.includes(g));
 export const STATUS = ['aguardando', 'ao_vivo', 'provisorio', 'homologado'];
 export const VAGAS_FINAL = 14;
 export const POSICAO_DE_QUEM_FALTA = 14;
@@ -135,16 +144,16 @@ function marcarEmpates(tabela) {
 export function calcularQuadro(estado) {
   const pilotos = estado.pilotos || [];
   const sessoes = estado.sessoes || {};
-  const doGrupo = (g) => pilotos.filter((p) => p.grupo === g).map((p) => p.nome);
+  const dosBlocos = (bs) => pilotos.filter((p) => bs.includes(p.grupo)).map((p) => p.nome);
   const atrasados = new Set(pilotos.filter((p) => p.atrasado).map((p) => p.nome));
   const kartDe = {};
 
-  const out = { sessoes: {}, grupos: {}, geral: null, final: null, melhor_volta_do_dia: null, avisos: [] };
+  const out = { sessoes: {}, blocos: {}, geral: null, final: null, melhor_volta_do_dia: null, avisos: [] };
   const voltasDoDia = []; // { piloto, mv_ms, sessao }
 
   for (const def of SESSOES) {
     const s = sessoes[def.codigo] || {};
-    const pilotosSessao = def.grupo ? doGrupo(def.grupo) : [];
+    const pilotosSessao = def.blocos ? dosBlocos(def.blocos) : [];
     const status = s.status || (temFolha(s.linhas) ? 'provisorio' : 'aguardando');
     const resultado = temFolha(s.linhas)
       ? resultadoDaSessao(s.linhas, pilotosSessao, { contarAusentes: def.tipo === 'bateria' })
@@ -160,35 +169,37 @@ export function calcularQuadro(estado) {
     out.sessoes[def.codigo] = {
       ...def, status, atualizado_em: s.atualizado_em || null, foto: s.foto || null,
       observacoes: s.observacoes || null, resultado, tomada,
-      grid: def.grupo ? gridDaTomada(s.tomada, pilotosSessao, atrasados) : null,
+      grid: def.blocos ? gridDaTomada(s.tomada, pilotosSessao, atrasados) : null,
     };
   }
 
-  // ---------- placar: por grupo e geral (os 28) ----------
+  // ---------- placar: por bloco e geral (os 28) ----------
+  // `grupo` do piloto = o bloco sorteado (W, X, Y ou Z). Bloco fora da lista não corre bateria nenhuma.
   const linhaDoPiloto = (nome) => {
     const p = pilotos.find((x) => x.nome === nome) || {};
-    const g = p.grupo;
-    const r1 = g && out.sessoes[`B1_${g}`].resultado.find((l) => l.piloto === nome);
-    const r2 = g && out.sessoes[`B2_${g}`].resultado.find((l) => l.piloto === nome);
+    const g = BLOCOS.includes(p.grupo) ? p.grupo : null;
+    const r1 = g && out.sessoes[bateriaDoBloco(g, 1).codigo].resultado.find((l) => l.piloto === nome);
+    const r2 = g && out.sessoes[bateriaDoBloco(g, 2).codigo].resultado.find((l) => l.piloto === nome);
     const bat = (r) => (r ? { pos: r.ausente ? null : r.pos_oficial, pontos: r.pontos, ausente: !!r.ausente } : null);
     return {
-      piloto: nome, grupo: g || null, cabeca: p.cabeca || null,
+      piloto: nome, grupo: g, cabeca: p.cabeca || null,
       b1: bat(r1), b2: bat(r2),
+      b1_codigo: g ? bateriaDoBloco(g, 1).codigo : null, b2_codigo: g ? bateriaDoBloco(g, 2).codigo : null,
       correu: !!(r1 || r2),
       total: (r1?.pontos || 0) + (r2?.pontos || 0),
       mv_baterias_ms: menorVolta(r1?.mv_ms, r2?.mv_ms),
     };
   };
-  for (const g of ['A', 'B']) {
-    const nomes = doGrupo(g);
-    out.grupos[g] = { pilotos: nomes, tabela: marcarEmpates(nomes.map(linhaDoPiloto).sort(ordemPorPontos)) };
+  for (const g of BLOCOS) {
+    const nomes = dosBlocos([g]);
+    out.blocos[g] = { pilotos: nomes, tabela: marcarEmpates(nomes.map(linhaDoPiloto).sort(ordemPorPontos)) };
   }
 
   // quem já correu fica em cima; quem ainda não correu nenhuma fica embaixo (0 ponto não é liderança)
-  const geral = pilotos.filter((p) => p.grupo).map((p) => linhaDoPiloto(p.nome))
+  const geral = pilotos.filter((p) => BLOCOS.includes(p.grupo)).map((p) => linhaDoPiloto(p.nome))
     .sort((a, b) => Number(b.correu) - Number(a.correu) || ordemPorPontos(a, b));
   marcarEmpates(geral);
-  const baterias = ['B1_A', 'B1_B', 'B2_A', 'B2_B'].map((c) => out.sessoes[c]);
+  const baterias = BATERIAS.map((d) => out.sessoes[d.codigo]);
   const algumaCorreu = baterias.some((s) => s.resultado.length);
   const definido = baterias.every((s) => s.status === 'homologado');
   for (const l of geral) l.vai_pra_final = algumaCorreu && l.correu && l.pos <= VAGAS_FINAL;

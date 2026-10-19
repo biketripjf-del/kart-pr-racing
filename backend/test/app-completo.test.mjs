@@ -7,12 +7,13 @@ import { participacoesDoEvento, classificacaoDoEvento, rankingCampeonato, numero
 const NOMES = Array.from({ length: 28 }, (_, i) => `Piloto ${String(i + 1).padStart(2, '0')}`);
 
 // ---------- sorteio ----------
-test('sorteio: 14 + 14, todos os nomes uma vez só', () => {
+const porBloco = (o) => ['W', 'X', 'Y', 'Z'].map((g) => o.filter((x) => x.grupo === g).length);
+
+test('sorteio: 4 blocos de 7 (W, X, Y, Z), todos os nomes uma vez só', () => {
   const o = montarOrdem(NOMES, 'semente-x');
   assert.equal(o.length, 28);
   assert.equal(new Set(o.map((x) => x.nome)).size, 28);
-  assert.equal(o.filter((x) => x.grupo === 'A').length, 14);
-  assert.equal(o.filter((x) => x.grupo === 'B').length, 14);
+  assert.deepEqual(porBloco(o), [7, 7, 7, 7]);
 });
 
 test('sorteio: mesma semente = mesmo resultado, qualquer que seja a ordem do cadastro', () => {
@@ -28,21 +29,20 @@ test('sorteio: embaralha de verdade (não é a ordem alfabética)', () => {
   assert.notDeepEqual(o.map((x) => x.nome), NOMES);
 });
 
-test('sorteio: cabeças de chave saem primeiro e se dividem entre A e B', () => {
+test('sorteio: cabeças de chave saem primeiro, um em cada bloco', () => {
   const cab = ['Piloto 01', 'Piloto 02', 'Piloto 03', 'Piloto 04'];
   const o = montarOrdem(NOMES, 's', cab);
   assert.deepEqual(new Set(o.slice(0, 4).map((x) => x.nome)), new Set(cab));
-  assert.equal(o.slice(0, 4).filter((x) => x.grupo === 'A').length, 2);
-  assert.equal(o.filter((x) => x.grupo === 'A').length, 14);
+  assert.deepEqual(porBloco(o.slice(0, 4)), [1, 1, 1, 1]);
+  assert.deepEqual(porBloco(o), [7, 7, 7, 7]);
   assert.deepEqual(montarOrdem([...NOMES].reverse(), 's', [...cab].reverse()), o, 'ordem do cadastro não muda o sorteio dos cabeças');
 });
 
-test('sorteio: número ímpar fecha 14/13; 3 cabeças também fecham 14/14', () => {
+test('sorteio: 27 fecha 7/7/7/6; 3 cabeças também fecham 7 em cada', () => {
   const o = montarOrdem(NOMES.slice(0, 27), 's');
-  assert.equal(o.filter((x) => x.grupo === 'A').length, 14);
-  assert.equal(o.filter((x) => x.grupo === 'B').length, 13);
+  assert.deepEqual(porBloco(o), [7, 7, 7, 6]);
   const c = montarOrdem(NOMES, 's', NOMES.slice(0, 3));
-  assert.equal(c.filter((x) => x.grupo === 'A').length, 14);
+  assert.deepEqual(porBloco(c), [7, 7, 7, 7]);
 });
 
 const T0 = Date.parse('2026-10-20T23:00:00Z');
@@ -85,11 +85,11 @@ test('sorteio: depois do último nome mostra a semente; conclui só depois do re
   assert.equal(decidir({ ...s, status: 'cancelado' }, fim + 9000), 'nada');
 });
 
-test('sorteio: grava os grupos no evento sem mexer no resto', () => {
-  const estado = { titulo: 'X', pilotos: [{ nome: 'Piloto 01', grupo: null, piloto_id: 7 }, { nome: 'Fora', grupo: 'A' }] };
-  const novo = aplicarGrupos(estado, [{ nome: 'Piloto 01', grupo: 'B', cabeca: false }]);
-  assert.deepEqual(novo.pilotos[0], { nome: 'Piloto 01', grupo: 'B', piloto_id: 7, cabeca: null });
-  assert.deepEqual(novo.pilotos[1], { nome: 'Fora', grupo: 'A' });
+test('sorteio: grava os blocos no evento sem mexer no resto', () => {
+  const estado = { titulo: 'X', pilotos: [{ nome: 'Piloto 01', grupo: null, piloto_id: 7 }, { nome: 'Fora', grupo: 'W' }] };
+  const novo = aplicarGrupos(estado, [{ nome: 'Piloto 01', grupo: 'Y', cabeca: false }]);
+  assert.deepEqual(novo.pilotos[0], { nome: 'Piloto 01', grupo: 'Y', piloto_id: 7, cabeca: null });
+  assert.deepEqual(novo.pilotos[1], { nome: 'Fora', grupo: 'W' });
   assert.equal(novo.titulo, 'X');
 });
 
@@ -145,35 +145,38 @@ test('histórico: faltando folha, NÃO aplica os 14 — ordena pela média e mar
   assert.equal(c.linhas[0].media, 1);
 });
 
-// evento formato copa3 (3ª Copa)
-const A = Array.from({ length: 14 }, (_, i) => `A${i + 1}`);
-const B = Array.from({ length: 14 }, (_, i) => `B${i + 1}`);
+// evento formato copa3 (3ª Copa, opção A: 4 blocos de 7). id = 100 × (bloco 1–4) + posição no bloco
+const bloco = (g) => Array.from({ length: 7 }, (_, i) => `${g}${i + 1}`);
+const [W, X, Y, Z] = ['W', 'X', 'Y', 'Z'].map(bloco);
 const copa = (sessoes) => ({
   slug: 'copa-3', estado: {
     titulo: '3ª Copa', data: '2026-10-23',
-    pilotos: [...A.map((n, i) => ({ nome: n, grupo: 'A', piloto_id: 100 + i })), ...B.map((n, i) => ({ nome: n, grupo: 'B', piloto_id: 200 + i }))],
+    pilotos: [W, X, Y, Z].flatMap((ns, k) => ns.map((n, i) => ({ nome: n, grupo: 'WXYZ'[k], piloto_id: 100 * (k + 1) + i }))),
     sessoes,
   },
 });
 const homolog = (l) => ({ linhas: l, status: 'homologado' });
 
 test('histórico: na copa, a FINAL ordena o topo e o resto segue a soma das baterias', () => {
+  // somas: Y_i = 2i · W_i = X_i = 7 + 2i · Z_i = 14 + 2i → top-14 = Y1–Y7, W1–W3, X1–X3 e X4 (melhor volta na bateria 4)
   const sess = {
-    B1_A: homolog(linhas(A)), B2_A: homolog(linhas(A)), B1_B: homolog(linhas(B)), B2_B: homolog(linhas(B)),
+    B1_WX: homolog(linhas([...W, ...X])), B2_YZ: homolog(linhas([...Y, ...Z])),
+    B3_WY: homolog(linhas([...Y, ...W])), B4_XZ: homolog(linhas([...X, ...Z], 47000)),
   };
-  // top-14 = A1..A7 e B1..B7 (2, 4, ..., 14 pontos). Final: B7 vence.
-  const finalistas = ['B7', 'A1', 'B1', 'A2', 'B2', 'A3', 'B3', 'A4', 'B4', 'A5', 'B5', 'A6', 'B6', 'A7'];
+  // Final: X4 (o 14º das baterias) vence; Y1, o melhor das baterias, chega em 2º
+  const finalistas = ['X4', 'Y1', 'W1', 'X1', 'Y2', 'Y3', 'W2', 'X2', 'Y4', 'Y5', 'W3', 'X3', 'Y6', 'Y7'];
   const c = classificacaoDoEvento(copa({ ...sess, FINAL: homolog(linhas(finalistas)) }));
   assert.equal(c.completa, true);
-  assert.equal(c.campeao, 'B7');
-  assert.deepEqual(c.linhas.slice(0, 3).map((l) => l.piloto), ['B7', 'A1', 'B1']);
+  assert.equal(c.campeao, 'X4');
+  assert.deepEqual(c.linhas.slice(0, 3).map((l) => l.piloto), ['X4', 'Y1', 'W1']);
   assert.equal(c.linhas.length, 28);
   assert.equal(c.linhas[14].na_final, false);
+  assert.equal(c.linhas[14].piloto, 'W4', 'o 1º de fora da final é o W4, que perdeu a 14ª vaga na melhor volta');
   assert.equal(c.linhas[14].pos, 15);
-  const campeao = numerosDoPiloto([copa({ ...sess, FINAL: homolog(linhas(finalistas)) })], 'id:206');
-  assert.equal(campeao.titulos, 1, 'B7 (id 206) venceu a final = 1 título');
+  const campeao = numerosDoPiloto([copa({ ...sess, FINAL: homolog(linhas(finalistas)) })], 'id:203');
+  assert.equal(campeao.titulos, 1, 'X4 (id 203) venceu a final = 1 título');
   assert.equal(campeao.finais, 1);
-  assert.equal(numerosDoPiloto([copa({ ...sess, FINAL: homolog(linhas(finalistas)) })], 'id:100').titulos, 0, 'A1 venceu as baterias, mas não a final');
+  assert.equal(numerosDoPiloto([copa({ ...sess, FINAL: homolog(linhas(finalistas)) })], 'id:300').titulos, 0, 'Y1 venceu as baterias, mas não a final');
 });
 
 test('ranking: colocação = pontos; quem faltou ao evento leva nº de classificados + 1; teste não conta', () => {
@@ -262,10 +265,10 @@ test('rivais: quem chegou na frente nas corridas em comum; ausente não conta', 
   assert.equal(r[0].piloto_id, 2, 'quem mais cruzou com ele vem primeiro');
   const comAusente = rivaisDoPiloto([evR('c', '2026-01-01', [{ ...R1, linhas: [...L([[1, 48000], [2, 48480], [3, 49440]]), { piloto: P(4), ausente: true }] }])], 'id:1');
   assert.equal(comAusente.find((x) => x.piloto_id === 4), undefined);
-  // formato da 3ª Copa: quem não correu a bateria do grupo entra como ausente — e ausente não é rival vencido
+  // formato da 3ª Copa: quem não correu a bateria do bloco entra como ausente — e ausente não é rival vencido
   const copa = { slug: 'c3', estado: { titulo: 'C3', data: '2026-10-23',
-    pilotos: [1, 2, 3, 4].map((k) => ({ nome: P(k), piloto_id: k, grupo: 'A' })),
-    sessoes: { B1_A: { linhas: L([[1, 48000], [2, 48480], [3, 49440]]) } } } };
+    pilotos: [1, 2, 3, 4].map((k) => ({ nome: P(k), piloto_id: k, grupo: k % 2 ? 'W' : 'X' })),
+    sessoes: { B1_WX: { linhas: L([[1, 48000], [2, 48480], [3, 49440]]) } } } };
   assert.ok(participacoesDoEvento(copa).some((x) => x.piloto === P(4) && x.ausente), 'P4 entra como ausente no formato da Copa');
   assert.equal(rivaisDoPiloto([copa], 'id:1').find((x) => x.piloto_id === 4), undefined, 'ausente não conta como rival');
   assert.equal(rivaisDoPiloto([copa], 'id:4').length, 0, 'quem faltou não tem confronto');

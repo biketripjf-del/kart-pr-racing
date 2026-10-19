@@ -147,8 +147,8 @@ for (let i = 0; i < 25 && s.fase !== 'concluido'; i++) { await espera(2000); s =
 ok(s.fase === 'concluido' && s.revelados.length === 28 && s.semente, 'concluiu sozinho com os 28 e mostrou a semente');
 await espera(2500);
 const depois = (await http('GET', '/api/ao-vivo/copa-3')).json;
-const a = depois.pilotos.filter((p) => p.grupo === 'A').length;
-ok(a === 14 && depois.pilotos.filter((p) => p.grupo === 'B').length === 14, 'grupos gravados no evento: 14 A + 14 B');
+const porBloco = ['W', 'X', 'Y', 'Z'].map((g) => depois.pilotos.filter((p) => p.grupo === g).length);
+ok(porBloco.every((n) => n === 7), `blocos gravados no evento: 7 em cada (${porBloco.join('/')})`);
 ok(s.revelados.every((r) => depois.pilotos.find((p) => p.nome === r.nome).grupo === r.grupo), 'grupo gravado = grupo mostrado na tela');
 const { montarOrdem } = await import('../src/sorteio.js');
 ok(JSON.stringify(montarOrdem(s.participantes, s.semente).map((o) => o.nome)) === JSON.stringify(s.revelados.map((r) => r.nome)),

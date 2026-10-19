@@ -78,7 +78,7 @@ export function AdminSorteio({ naTela }) {
     <div className={naTela ? 'mb-4' : 'mb-8'}>
       {naTela
         ? <div className="flex items-center gap-2 mb-2 text-xs uppercase tracking-[0.2em] text-[color:var(--color-gold)] font-bold"><Shuffle size={14} /> Só você vê isto · organizador</div>
-        : <h2 className="text-lg font-semibold flex items-center gap-2 mb-3"><Shuffle size={18} /> Sorteio dos grupos ({evento})</h2>}
+        : <h2 className="text-lg font-semibold flex items-center gap-2 mb-3"><Shuffle size={18} /> Sorteio dos blocos ({evento})</h2>}
       <div className="card p-4 space-y-3 border-[color:var(--color-gold)]/50">
         <div className="text-sm text-tx">
           {s ? <>Situação: <b>{{ contagem: 'marcado', revelando: 'rodando agora', fechando: 'rodando agora', concluido: 'concluído' }[s.fase] || s.fase}</b> · {s.fase === 'contagem' ? `começa ${quandoBRT(s.agendado_para)} BRT` : `${s.revelados.length} de ${s.total} revelados`}</> : 'Nenhum sorteio marcado.'}
@@ -86,14 +86,14 @@ export function AdminSorteio({ naTela }) {
         {rodando && <div className="text-xs text-tx2">Rodando: não dá pra mexer até o último nome sair.</div>}
         {!rodando && (!concluido || refazer) && (
           <>
-            {refazer && <div className="text-xs text-amber-700">Refazer apaga os grupos atuais quando o novo sorteio rodar.</div>}
+            {refazer && <div className="text-xs text-amber-700">Refazer apaga os blocos atuais quando o novo sorteio rodar.</div>}
             <form onSubmit={agendar} className="space-y-2">
               <span className="label">Dia e hora do sorteio</span>
               <input type="datetime-local" className="input" value={quando} min={campoBRT(Date.now())} onChange={(e) => setQuando(e.target.value)} required />
               <button className="btn btn-primary w-full">{s?.fase === 'contagem' ? 'Remarcar pra esse horário' : 'Marcar o sorteio'}</button>
             </form>
             <button type="button" onClick={() => marcar(new Date(Date.now() + 60000).toISOString())} className="btn btn-ghost w-full text-sm">Começar daqui a 1 minuto</button>
-            <div className="text-[11px] text-tx3">Horário de Brasília. Na hora marcada o sorteio começa sozinho pra todo mundo (1 nome a cada 5 s, ~2,5 min pra 28) e grava os grupos no quadro ao vivo.</div>
+            <div className="text-[11px] text-tx3">Horário de Brasília. Na hora marcada o sorteio começa sozinho pra todo mundo (1 nome a cada 5 s, ~2,5 min pra 28) e grava os blocos no quadro ao vivo.</div>
           </>
         )}
         {s?.fase === 'contagem' && <button onClick={cancelar} className="btn btn-ghost w-full text-sm">Cancelar o sorteio marcado</button>}
