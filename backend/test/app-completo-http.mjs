@@ -173,7 +173,9 @@ ok(c2.status === 200, 'lança a folha que faltava numa corrida do histórico');
 await http('PUT', '/api/ao-vivo/corridas-17-07/corrida/C2', { linhas: linhas(['Piloto 2']) }, token);
 const rk = await http('GET', '/api/historico/ranking');
 ok(rk.status === 200 && rk.json.eventos.length === 1 && rk.json.eventos[0].slug === 'corridas-17-07', 'ranking: só o evento que já correu (copa-3 ainda vazia)');
-ok(rk.json.tabela[0].piloto === 'Só de julho' && rk.json.tabela.length === 3, 'ranking: vencedor de julho na frente');
+ok(rk.json.tabela.length === 3 && ['Só de julho', 'Piloto 2'].every((n) => rk.json.tabela.find((l) => l.piloto === n).total === 25),
+  'ranking por corrida: os vencedores das 2 corridas separadas de julho levam 25 cada');
+ok(rk.json.tabela.find((l) => l.piloto === 'Brunner').total === 18, 'ranking: Brunner 2º na corrida dele = 18');
 ok(rk.json.ano === '2026' && (await http('GET', '/api/historico/ranking?ano=todos')).json.ano === 'todos', 'ranking: padrão = temporada 2026; ?ano=todos = história');
 const pp = await http('GET', `/api/historico/piloto/${idP2}`);
 ok(pp.status === 200 && pp.json.numeros.corridas_disputadas === 1 && pp.json.numeros.vitorias === 1 && pp.json.piloto.foto_v, 'página do piloto: 1 corrida, 1 vitória, com foto');

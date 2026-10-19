@@ -43,7 +43,7 @@ function Linha({ l, lider, eventos }) {
         <span className="block font-semibold truncate">{l.piloto}</span>
         <span className="block text-[11px] text-tx2 truncate">
           {l.colunas.map((c, i) => (
-            <span key={c.evento}>{i ? ' · ' : ''}<span className={c.descartado ? 'line-through text-tx3' : ''} title={c.descartado ? 'descarte' : undefined}>{dataBR(eventos[i]?.data).slice(0, 5)}: {c.pos != null ? `${c.pos}º (${pts(c.pontos)})` : 'não correu'}</span></span>
+            <span key={c.evento}>{i ? ' · ' : ''}<span className={c.descartado ? 'line-through text-tx3' : ''} title={c.descartado ? 'descarte' : undefined}>{dataBR(eventos[i]?.data).slice(0, 5)}: {c.posicoes?.length ? `${c.posicoes.map((x) => `${x}º`).join('+')} (${pts(c.pontos)})` : c.pos != null ? `${c.pos}º (${pts(c.pontos)})` : 'não correu'}</span></span>
           ))}
         </span>
       </span>
