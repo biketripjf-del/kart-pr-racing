@@ -192,6 +192,18 @@ test('ranking: colocação = pontos; quem faltou ao evento leva nº de classific
   assert.equal(r.tabela[1].piloto_id, 1);
 });
 
+test('títulos: edição da Copa no formato corridas dá título ao 1º; corridas avulsas (17/07) não', () => {
+  const avulso = ev17([C1, C2, C3, C4]);
+  assert.equal(classificacaoDoEvento(avulso).campeao, null, '17/07 não foi Copa');
+  assert.equal(numerosDoPiloto([avulso], 'id:2').titulos, 0);
+  const copa = { slug: 'copa-2', estado: { ...avulso.estado, copa: true } };
+  assert.equal(classificacaoDoEvento(copa).campeao, 'P2');
+  assert.equal(numerosDoPiloto([copa], 'id:2').titulos, 1);
+  assert.equal(numerosDoPiloto([copa], 'id:1').titulos, 0, 'só o 1º leva título');
+  const parcial = { slug: 'copa-x', estado: { ...copa.estado, corridas: [C1, C2] } };
+  assert.equal(classificacaoDoEvento(parcial).campeao, null, 'Copa sem todas as folhas ainda não tem campeão');
+});
+
 test('números do piloto: vitórias, pódios, média e melhor volta por traçado', () => {
   const n = numerosDoPiloto([ev17([C1, C2, C3, C4])], 'id:1');
   assert.equal(n.corridas_disputadas, 2);

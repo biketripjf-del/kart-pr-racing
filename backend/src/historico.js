@@ -8,6 +8,7 @@
 //    FINAL, e depois de quem não foi pra final, a soma das baterias.
 //  - 'corridas': lista livre de corridas (17/07/2026: 4 corridas, cada piloto em 2). Classificação = soma das
 //    posições, menor vence; corrida que faltou = 14. Enquanto faltar folha, ordena pela MÉDIA e marca parcial.
+//    Com `copa: true` (1ª Copa 2020, 2ª Copa 2024) o 1º do evento completo é o campeão (vira título no piloto).
 //
 // Ranking do campeonato, "mesmo esquema": a colocação no evento é o número de pontos (1º = 1); menor soma
 // vence; quem não correu o evento leva (nº de classificados naquele evento + 1).
@@ -79,6 +80,8 @@ export function classificacaoDoEvento({ slug, estado }) {
     tab.forEach((l, i) => { l.pos = i + 1; });
     return {
       slug, titulo: estado.titulo, data: estado.data, formato: 'corridas', completa, linhas: tab,
+      // edição da Copa guardada como lista de corridas (1ª e 2ª): completa, o 1º é o campeão e conta título
+      campeao: estado.copa && completa ? tab[0]?.piloto ?? null : null,
       criterio: completa ? 'soma das posições (menor vence)' : `parcial: ${lancadas.length} de ${previstas} corridas lançadas — ordem pela média de posição`,
     };
   }
