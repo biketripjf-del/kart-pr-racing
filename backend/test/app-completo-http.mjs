@@ -189,9 +189,11 @@ ok((await http('GET', '/api/config')).json.evento_atual === 'copa-3', 'config: e
 // C1 com 3 pilotos: Só de julho 47.100 · Brunner 48.101 · Piloto 2 49.102 (6,5 HP)
 await http('PUT', '/api/ao-vivo/corridas-17-07/corrida/C1', { linhas: linhas(['Só de julho', 'Brunner', 'Piloto 2']) }, token);
 const rt = await http('GET', '/api/historico/ritmo');
-ok(rt.status === 200 && rt.json.tabela[0].piloto === 'Só de julho' && rt.json.tabela[0].ritmo === 100, 'ritmo: o mais rápido da corrida = 100');
-ok(rt.json.tabela.find((l) => l.piloto_id === 1)?.ritmo === 102.13, `ritmo: Brunner 48.101 / 47.100 = 102,13 (${rt.json.tabela.find((l) => l.piloto_id === 1)?.ritmo})`);
-ok(!rt.json.tabela.some((l) => l.piloto === 'Fantasma'), 'ritmo: evento de teste não entra');
+const rtTodos = [...rt.json.tabela, ...rt.json.poucas];
+ok(rt.status === 200 && rt.json.minimo_corridas === 3 && rt.json.poucas.find((l) => l.piloto === 'Só de julho')?.ritmo === 100, 'ritmo: o mais rápido da corrida = 100 (1 corrida: fica em "poucas")');
+ok(!rt.json.tabela.some((l) => l.corridas < 3) && rt.json.tabela.every((l, i) => l.pos === i + 1), 'ritmo: ranking só com 3+ corridas, posições 1..N');
+ok(rtTodos.find((l) => l.piloto_id === 1)?.ritmo === 102.13, `ritmo: Brunner 48.101 / 47.100 = 102,13 (${rtTodos.find((l) => l.piloto_id === 1)?.ritmo})`);
+ok(!rtTodos.some((l) => l.piloto === 'Fantasma'), 'ritmo: evento de teste não entra');
 const rc = await http('GET', '/api/historico/recordes');
 const hp = rc.json.find((x) => x.tracado === '6,5 HP');
 ok(rc.status === 200 && hp?.recorde.piloto === 'Só de julho' && hp.recorde.mv_ms === 47100 && hp.top.length === 3, 'recordes: 6,5 HP = Só de julho 47.100, top 3');

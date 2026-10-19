@@ -284,8 +284,11 @@ export function numerosDoPiloto(eventos, chave) {
 }
 
 // ---------- ranking de ritmo ----------
-// Média do índice de ritmo em todas as corridas (menor = mais rápido). Quem tem só 1 corrida aparece, marcado.
-export function rankingRitmo(eventos) {
+// Média do índice de ritmo em todas as corridas (menor = mais rápido). Corte (Brunner 19/10: "1 Mínimo de 3 corridas para
+// entrar no ranking"): com 1 corrida, quem fez a volta mais rápida dela tinha média 100 e passava na frente de quem foi o
+// mais rápido em 4 de 7. Quem tem menos de MIN_CORRIDAS_RITMO fica em `poucas`, fora da posição.
+export const MIN_CORRIDAS_RITMO = 3;
+export function rankingRitmo(eventos, { minimo = MIN_CORRIDAS_RITMO } = {}) {
   const validos = eventos.filter((e) => !e.estado.teste);
   const acc = new Map();
   for (const p of validos.flatMap((e) => participacoesDoEvento(e))) {
@@ -297,12 +300,15 @@ export function rankingRitmo(eventos) {
     if (p.piloto_id != null) a.piloto_id = p.piloto_id;
     acc.set(p.chave, a);
   }
-  const tabela = [...acc.values()].map(({ ritmos, _data, ...a }) => ({ ...a, ritmo: media2(ritmos), corridas: ritmos.length, melhor_ritmo: Math.min(...ritmos) }))
+  const todos = [...acc.values()].map(({ ritmos, _data, ...a }) => ({ ...a, ritmo: media2(ritmos), corridas: ritmos.length, melhor_ritmo: Math.min(...ritmos) }))
     .sort((a, b) => a.ritmo - b.ritmo || b.corridas - a.corridas || a.piloto.localeCompare(b.piloto));
+  const tabela = todos.filter((l) => l.corridas >= minimo);
   tabela.forEach((l, i) => { l.pos = i + 1; });
   return {
-    regra: 'Melhor volta do piloto ÷ melhor volta da corrida × 100. 100 = o mais rápido da corrida; 101,5 = 1,5% mais lento. A média de todas as corridas ordena a lista (menor = mais rápido).',
+    regra: `Melhor volta do piloto ÷ melhor volta da corrida × 100. 100 = o mais rápido da corrida; 101,5 = 1,5% mais lento. A média de todas as corridas ordena a lista (menor = mais rápido). Só entra no ranking quem tem ${minimo} corridas ou mais.`,
+    minimo_corridas: minimo,
     tabela,
+    poucas: todos.filter((l) => l.corridas < minimo),
   };
 }
 
