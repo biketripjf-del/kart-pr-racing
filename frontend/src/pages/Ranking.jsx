@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Trophy, ChevronRight, Info, Gauge, Timer, Flag } from 'lucide-react';
+import { Trophy, ChevronRight, Info, Gauge, Timer, Flag, Calculator } from 'lucide-react';
 import { api } from '../api.js';
 import { Casca, Avatar, dataBR, volta, atras } from '../components/Marca.jsx';
 
@@ -250,6 +250,9 @@ function Pontos({ aba, setAba }) {
   // temporada (19/10): abre no ano atual; os botões trocam de ano ou mostram a história inteira
   const [ano, setAno] = useState(null);
   useEffect(() => { api.get('/historico/ranking', { params: ano ? { ano } : {} }).then((x) => setR(x.data)).catch(() => setR({ eventos: [], tabela: [] })); }, [ano]);
+  // simulador da última etapa (19/10): o botão só aparece se há etapa pela frente no ano que está na tela
+  const [proxima, setProxima] = useState(null);
+  useEffect(() => { api.get('/historico/titulo').then((x) => setProxima(x.data.etapa)).catch(() => setProxima(null)); }, []);
   if (!r) return <Casca sub="Ranking"><div className="text-center text-tx2 py-10">Carregando…</div></Casca>;
   if (!r.tabela.length) {
     return (
@@ -282,6 +285,17 @@ function Pontos({ aba, setAba }) {
         <span>{r.ano === 'todos' ? 'Toda a história' : r.nome ? `${r.nome} · ${r.ano}` : `Temporada ${r.ano}`} · {r.eventos.length} evento{r.eventos.length > 1 ? 's' : ''} · {r.tabela.length} pilotos</span>
         {r.parcial && <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">parcial</span>}
       </div>
+
+      {proxima && String(proxima.data).slice(0, 4) === String(r.ano) && (
+        <Link to="/simulador" className="card mb-3 flex items-center gap-3 px-4 py-3 hover:bg-[#f3f6fa]">
+          <span className="w-10 h-10 rounded-xl bg-[#e8eff7] text-brand flex items-center justify-center shrink-0"><Calculator size={20} /></span>
+          <span className="flex-1 min-w-0">
+            <span className="block font-semibold">E se você vencer na sexta?</span>
+            <span className="block text-xs text-tx2">Simule seu resultado e veja onde termina a Copa</span>
+          </span>
+          <ChevronRight size={18} className="text-tx3" />
+        </Link>
+      )}
 
       {top.length === 3 && (
         <div className="card px-3 pt-4 pb-0 overflow-hidden">

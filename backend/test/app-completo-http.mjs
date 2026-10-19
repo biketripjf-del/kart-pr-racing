@@ -176,6 +176,15 @@ ok(rk.status === 200 && rk.json.eventos.length === 1 && rk.json.eventos[0].slug 
 ok(rk.json.tabela.length === 3 && ['Só de julho', 'Piloto 2'].every((n) => rk.json.tabela.find((l) => l.piloto === n).total === 25),
   'ranking por corrida: os vencedores das 2 corridas separadas de julho levam 25 cada');
 ok(rk.json.tabela.find((l) => l.piloto === 'Brunner').total === 18, 'ranking: Brunner 2º na corrida dele = 18');
+// simulador da última etapa (19/10, "1+2 go"): nada é gravado
+const tit = await http('GET', '/api/historico/titulo');
+ok(tit.status === 200 && tit.json.etapa.slug === 'copa-3' && tit.json.linhas.some((l) => l.piloto === 'Brunner' && l.corre), 'simulador: matemática do título da copa-3, Brunner corre');
+ok((await http('POST', '/api/historico/simular', { ajustes: { Brunner: { b1: 15 } } })).status === 400, 'simulador: posição 15 numa bateria = 400');
+const sim = await http('POST', '/api/historico/simular', { ajustes: { Brunner: { b1: 1, b2: 1 } } });
+const brSim = sim.json.dia?.find((d) => d.piloto === 'Brunner');
+ok(sim.status === 200 && brSim.b1 === 1 && brSim.b2 === 1 && brSim.na_final, 'simulador: Brunner 1º nas 2 baterias vai pra final');
+const rk2 = await http('GET', '/api/historico/ranking');
+ok(JSON.stringify(rk2.json.tabela.map((l) => [l.piloto, l.total])) === JSON.stringify(rk.json.tabela.map((l) => [l.piloto, l.total])), 'simulador: o ranking de verdade não mudou');
 ok(rk.json.ano === '2026' && (await http('GET', '/api/historico/ranking?ano=todos')).json.ano === 'todos', 'ranking: padrão = temporada 2026; ?ano=todos = história');
 const pp = await http('GET', `/api/historico/piloto/${idP2}`);
 ok(pp.status === 200 && pp.json.numeros.corridas_disputadas === 1 && pp.json.numeros.vitorias === 1 && pp.json.piloto.foto_v, 'página do piloto: 1 corrida, 1 vitória, com foto');
