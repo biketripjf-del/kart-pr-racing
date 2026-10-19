@@ -91,7 +91,9 @@ export default function Comparar() {
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx3" />
               <input className="input pl-9" placeholder={ids.length ? 'Adicionar outro piloto' : 'Procure um piloto'} value={busca} onChange={(e) => setBusca(e.target.value)} />
             </div>
-            <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-[#e3e9f1]">
+            {/* lista inteira, sem caixa com rolagem própria: no celular a caixa de 5 linhas parecia ser a lista toda (Brunner 19/10) */}
+            {todos && <div className="mt-2 text-[11px] text-tx3">{opcoes.length} piloto{opcoes.length === 1 ? '' : 's'}{busca ? ' com esse nome' : ''}</div>}
+            <div className="mt-1 rounded-lg border border-[#e3e9f1]">
               {!todos && <div className="p-4 text-center text-sm text-tx2">Carregando…</div>}
               {opcoes.map((p) => (
                 <button key={p.piloto_id} onClick={() => trocar(p.piloto_id)} className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm border-b border-[#e3e9f1] last:border-0 hover:bg-[#eef3f9]">
