@@ -11,8 +11,10 @@
 //    comparar dois grupos que nunca se cruzaram. Custo: os 7 do bloco Y correm a 2ª e a 3ª em seguida.
 //  - Antes de cada corrida, tomada de tempo (~10 voltas), qualify NORMAL: melhor volta larga em 1º.
 //    Nada de grid invertido ("não é produtivo").
-//  - "A sua posição é o número de pontos que você fez": 1º = 1 ponto, 5º = 5. Menor soma vence.
-//    Perdeu a bateria = 14 pontos (texto). Desempate: melhor volta nas baterias (texto).
+//  - Pontos da bateria = tabela F1 (Brunner 19/10/2026 18:17 BRT, "go 1": uma régua só no dia e na Copa do ano):
+//    1º 25 · 2º 18 · 3º 15 … 10º 1, do 11º ao 14º 1. MAIOR soma vence. Perdeu a bateria = 0.
+//    Antes: "a sua posição é o número de pontos" (1º = 1, menor soma vence, perdeu = 14) — áudio do Emmanuel 14/10.
+//    Desempate: melhor volta nas baterias (texto).
 //  - A soma das baterias define os 14 da final; a FINAL sozinha decide campeão e pódio
 //    (Brunner 14/10 14:41 BRT: a soma do campeão "não inclui" a final — vence quem ganhar a final).
 //  - Punição do árbitro: 3 posições no resultado; reincidência de largada queimada = fim de fila (texto).
@@ -34,7 +36,9 @@ export const VAGAS_FINAL = 14;
 export const POSICAO_DE_QUEM_FALTA = 14;
 const PUNICAO_PADRAO = 3;
 
-export const pontosDaPosicao = (pos) => pos;
+export const PONTOS_F1 = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+export const PONTOS_DO_11_EM_DIANTE = 1;
+export const pontosDaPosicao = (pos) => PONTOS_F1[pos - 1] ?? PONTOS_DO_11_EM_DIANTE;
 
 // '00:48.485' | '48.485' | '1:02.3' → ms. Número já em ms passa direto.
 export function tempoParaMs(t) {
@@ -127,7 +131,7 @@ function gridDaTomada(tomada, nomes, atrasados) {
 }
 
 const ordemPorPontos = (a, b) =>
-  a.total - b.total || (a.mv_baterias_ms ?? Infinity) - (b.mv_baterias_ms ?? Infinity);
+  b.total - a.total || (a.mv_baterias_ms ?? Infinity) - (b.mv_baterias_ms ?? Infinity);
 
 function marcarEmpates(tabela) {
   tabela.forEach((l, i) => {
@@ -164,7 +168,7 @@ export function calcularQuadro(estado) {
     }
     for (const l of resultado) {
       if (l.kart != null) (kartDe[l.piloto] ||= {})[def.codigo] = l.kart;
-      l.pontos = pontosDaPosicao(l.pos_oficial);
+      l.pontos = l.ausente ? 0 : pontosDaPosicao(l.pos_oficial);
     }
     out.sessoes[def.codigo] = {
       ...def, status, atualizado_em: s.atualizado_em || null, foto: s.foto || null,

@@ -47,7 +47,7 @@ const { status, json } = await http('GET', '/api/ao-vivo/copa-3');
 ok(status === 200, 'leitura pública sem login');
 ok(json.quadro.sessoes.B1_WX.status === 'provisorio', 'folha nova entra como PROVISÓRIA');
 ok(json.quadro.sessoes.B4_XZ.grid === null, 'Bateria 4 sem grid até a tomada dela (nada de inverter)');
-ok(json.quadro.blocos.W.tabela[0].piloto === 'P1' && json.quadro.blocos.W.tabela[0].total === 1, 'placar do bloco W: P1 com 1 ponto');
+ok(json.quadro.blocos.W.tabela[0].piloto === 'P1' && json.quadro.blocos.W.tabela[0].total === 25, 'placar do bloco W: P1 venceu a bateria = 25 pontos (F1)');
 ok(json.quadro.geral.tabela[0].piloto === 'P1' && json.quadro.geral.tabela[0].vai_pra_final, 'geral: P1 na frente, dentro do corte');
 ok(json.quadro.em_curso === 'B1_WX', 'em curso = 1ª sessão não homologada');
 

@@ -12,7 +12,7 @@
 //
 // Ranking do campeonato, "mesmo esquema": a colocação no evento é o número de pontos (1º = 1); menor soma
 // vence; quem não correu o evento leva (nº de classificados naquele evento + 1).
-import { calcularQuadro, resultadoDaSessao, normalizar, POSICAO_DE_QUEM_FALTA } from './aoVivo.js';
+import { calcularQuadro, resultadoDaSessao, normalizar, POSICAO_DE_QUEM_FALTA, PONTOS_F1, PONTOS_DO_11_EM_DIANTE, pontosDaPosicao } from './aoVivo.js';
 
 const menor = (a, b) => (a == null ? b : b == null ? a : Math.min(a, b));
 // o mesmo piloto (mesmo piloto_id) pode ter nomes diferentes nas folhas — "Guilherme" em 2020, "Guilherme Teixeira"
@@ -135,9 +135,8 @@ export function classificacaoDoEvento({ slug, estado }) {
 // avulsas do ano juntas formam a copa" — o "avulsa vale metade" das 15:25 caiu).
 // Antes era "colocação = pontos, menor soma vence, faltou = classificados + 1": quem não estava em 2020 carregava a falta
 // pra sempre e cada folha antiga que chegava empurrava todo mundo.
-export const PONTOS_F1 = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
-export const PONTOS_DO_11_EM_DIANTE = 1;
-export const pontosDaPosicao = (pos) => PONTOS_F1[pos - 1] ?? PONTOS_DO_11_EM_DIANTE;
+// A tabela mora no aoVivo.js: o corte da final do dia usa a mesma (Brunner 19/10 18:17, "go 1").
+export { PONTOS_F1, PONTOS_DO_11_EM_DIANTE, pontosDaPosicao };
 
 // Temporada (Brunner 19/10: "a copa é por ano, não por todas da história"; "deixa a opção de ver por toda história,
 // mas o padrão é a do ano"): `ano` = só os eventos daquele ano; 'todos' = a história inteira. Sem `ano` = o ano mais
