@@ -128,9 +128,10 @@ function Eventos() {
   const ev = evs.find((e) => e.slug === sel) || evs[0];
   const copa3 = ev.formato === 'copa3';
   const maxCorridas = Math.max(0, ...ev.linhas.map((l) => l.corridas || 0));
-  const valor = (l) => (copa3 ? (l.na_final ? 'final' : `${l.baterias} pts`) : `${l.pontos} pts`);
+  // dentro do evento o número é a SOMA DAS POSIÇÕES (menor vence) — não confundir com os pts F1 da aba Pontos (19/10)
+  const valor = (l) => (copa3 ? (l.na_final ? 'final' : `soma ${l.baterias}`) : `soma ${pts(l.pontos)}`);
   const detalhe = (l) => (copa3
-    ? (l.na_final ? `finalista · ${l.baterias ?? 0} pts nas baterias` : 'não foi pra final')
+    ? (l.na_final ? `finalista · soma ${l.baterias ?? 0} nas baterias` : 'não foi pra final')
     // "N corridas" só pra quem correu menos que os outros: no celular a linha não comporta tudo
     : [l.corridas < maxCorridas ? `${l.corridas} corrida${l.corridas > 1 ? 's' : ''}` : null, `média ${l.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}º`, l.mv_ms ? `volta ${volta(l.mv_ms)}` : null].filter(Boolean).join(' · '));
   const top = ev.linhas.slice(0, 3);
