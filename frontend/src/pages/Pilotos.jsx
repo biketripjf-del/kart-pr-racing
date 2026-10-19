@@ -25,7 +25,7 @@ export default function Pilotos() {
             <Avatar id={p.piloto_id} v={p.foto_v} nome={p.nome} tam={42} />
             <span className="flex-1 min-w-0">
               <span className="block font-semibold truncate">{p.nome}</span>
-              <span className="block text-[11px] text-tx2">{p.ranking ? `${p.ranking}º no ranking` : 'estreia na 3ª Copa'}</span>
+              <span className="block text-[11px] text-tx2">{p.ranking ? `${p.ranking}º no ranking ${p.ano}` : p.ja_correu ? `não correu em ${p.ano}` : 'estreia na 3ª Copa'}</span>
             </span>
             <ChevronRight size={16} className="text-tx3" />
           </Link>
