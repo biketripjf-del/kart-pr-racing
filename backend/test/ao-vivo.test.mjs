@@ -2,12 +2,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  calcularQuadro, resultadoDaSessao, resolverNome, tempoParaMs, pontosDaPosicao, validarSessao,
+  calcularQuadro, resultadoDaSessao, resolverNome, tempoParaMs, pontosDaPosicao, validarSessao, SESSOES,
 } from '../src/aoVivo.js';
 
-const A = Array.from({ length: 14 }, (_, i) => `A${i + 1}`);
-const B = Array.from({ length: 14 }, (_, i) => `B${i + 1}`);
-const pilotos = [...A.map((n) => ({ nome: n, grupo: 'A' })), ...B.map((n) => ({ nome: n, grupo: 'B' }))];
+// 3ª Copa, formato opção A (19/10/2026): 4 blocos de 7 que se misturam nas baterias
+const bloco = (g) => Array.from({ length: 7 }, (_, i) => `${g}${i + 1}`);
+const [W, X, Y, Z] = ['W', 'X', 'Y', 'Z'].map(bloco);
+const pilotos = [W, X, Y, Z].flatMap((ns, k) => ns.map((n) => ({ nome: n, grupo: 'WXYZ'[k] })));
 // folha em que `ordem[i]` chega em i+1, melhor volta crescente com a posição
 const folha = (ordem, base = 48000) => ordem.map((p, i) => ({ piloto: p, pos: i + 1, kart: i + 1, mv: base + i * 100 }));
 
@@ -37,109 +38,109 @@ test('fim de fila e punição perto do fim não estouram a lista', () => {
 });
 
 test('quem perdeu a bateria leva 14 pontos, mesmo com o último da folha em 13º', () => {
-  const q = calcularQuadro({ pilotos, sessoes: { B1_A: { linhas: folha(A.slice(0, 13)) } } });
-  const r = q.sessoes.B1_A.resultado;
-  assert.equal(r.find((l) => l.piloto === 'A13').pontos, 13);
-  const falta = r.find((l) => l.piloto === 'A14');
+  const q = calcularQuadro({ pilotos, sessoes: { B1_WX: { linhas: folha([...W, ...X.slice(0, 6)]) } } });
+  const r = q.sessoes.B1_WX.resultado;
+  assert.equal(r.length, 14, 'a bateria 1 é W + X: 14 pilotos');
+  assert.equal(r.find((l) => l.piloto === 'X6').pontos, 13);
+  const falta = r.find((l) => l.piloto === 'X7');
   assert.equal(falta.ausente, true);
   assert.equal(falta.pontos, 14);
 });
 
+test('opção A: cada piloto corre 2 baterias (uma por rodada) e enfrenta 20 dos 27 rivais', () => {
+  const baterias = SESSOES.filter((d) => d.tipo === 'bateria');
+  assert.equal(baterias.length, 4);
+  for (const p of pilotos) {
+    const minhas = baterias.filter((d) => d.blocos.includes(p.grupo));
+    assert.deepEqual(minhas.map((d) => d.n), [1, 2], `${p.nome}: uma bateria em cada rodada`);
+    const rivais = new Set(pilotos.filter((o) => o.nome !== p.nome && minhas.some((d) => d.blocos.includes(o.grupo))).map((o) => o.nome));
+    assert.equal(rivais.size, 20, `${p.nome}: 20 rivais diferentes`);
+  }
+  for (const d of baterias) assert.equal(pilotos.filter((p) => d.blocos.includes(p.grupo)).length, 14, `${d.codigo}: 14 pilotos`);
+});
+
 test('grid de cada corrida = a tomada de tempo DELA, sem inverter; atrasado larga em último', () => {
   const estado = {
-    pilotos: pilotos.map((p) => (p.nome === 'A1' ? { ...p, atrasado: true } : p)),
+    pilotos: pilotos.map((p) => (p.nome === 'W1' ? { ...p, atrasado: true } : p)),
     sessoes: {
-      B1_A: { linhas: folha(A) },
-      B2_A: { tomada: folha(A) },
+      B1_WX: { linhas: folha([...W, ...X]) },
+      B3_WY: { tomada: folha([...W, ...Y]) },
     },
   };
   const q = calcularQuadro(estado);
-  // B1 venceu A1; mesmo assim a B2 larga pela tomada (A1 atrasado vai pro fim, A2 na pole)
-  assert.equal(q.sessoes.B2_A.grid[0], 'A2');
-  assert.equal(q.sessoes.B2_A.grid.at(-1), 'A1');
-  assert.equal(q.sessoes.B2_A.grid.length, 14);
+  // W1 venceu a bateria 1; mesmo assim a bateria 3 larga pela tomada (W1 atrasado vai pro fim, W2 na pole)
+  assert.equal(q.sessoes.B3_WY.grid[0], 'W2');
+  assert.equal(q.sessoes.B3_WY.grid.at(-1), 'W1');
+  assert.deepEqual(new Set(q.sessoes.B3_WY.grid), new Set([...W, ...Y]), 'bateria 3 = blocos W e Y');
   // sem tomada lançada, não há grid inventado
-  assert.equal(q.sessoes.B2_B.grid, null);
+  assert.equal(q.sessoes.B4_XZ.grid, null);
 });
 
-test('dia inteiro: menor soma vence, desempate por melhor volta, top-14 GERAL (não 7+7)', () => {
-  const inv = A.slice().reverse();
-  const sessoes = {
-    B1_A: { status: 'homologado', linhas: folha(A) },
-    // bateria 2 ao contrário: no grupo A todo mundo soma 15 → decide a melhor volta
-    B2_A: { status: 'homologado', linhas: folha(inv, 47000) },
-    B1_B: { status: 'homologado', linhas: folha(B) },
-    B2_B: { status: 'homologado', linhas: folha(B) },
-  };
-  const q = calcularQuadro({ pilotos, sessoes });
-  const tA = q.grupos.A.tabela;
-  assert.ok(tA.every((l) => l.total === 15));
-  assert.equal(tA[0].piloto, 'A14'); // 47.000 na B2 = melhor volta
+// dia completo: bateria 1 [W, X] · bateria 2 [Y, Z] · bateria 3 [Y, W] · bateria 4 [X, Z] (a 4 mais rápida)
+// somas: Y_i = 2i · W_i = X_i = 7 + 2i · Z_i = 14 + 2i
+const diaCompleto = () => ({
+  B1_WX: { status: 'homologado', linhas: folha([...W, ...X]) },
+  B2_YZ: { status: 'homologado', linhas: folha([...Y, ...Z]) },
+  B3_WY: { status: 'homologado', linhas: folha([...Y, ...W]) },
+  B4_XZ: { status: 'homologado', linhas: folha([...X, ...Z], 47000) },
+});
+
+test('dia inteiro: soma das 2 baterias de cada um, desempate por melhor volta, top-14 GERAL', () => {
+  const q = calcularQuadro({ pilotos, sessoes: diaCompleto() });
   const g = q.geral.tabela;
-  assert.equal(g[0].piloto, 'B1');
+  const linha = (n) => g.find((l) => l.piloto === n);
+  // a 1ª e a 2ª bateria do piloto saem do bloco dele
+  assert.deepEqual([linha('Y1').b1_codigo, linha('Y1').b2_codigo], ['B2_YZ', 'B3_WY']);
+  assert.deepEqual([linha('X1').b1_codigo, linha('X1').b2_codigo], ['B1_WX', 'B4_XZ']);
+  assert.deepEqual([linha('W3').b1.pontos, linha('W3').b2.pontos, linha('W3').total], [3, 10, 13]);
+  assert.equal(g[0].piloto, 'Y1');
   assert.equal(g[0].total, 2);
-  // B1..B7 somam 2..14 (< 15): os 7 primeiros são do B; as 7 vagas restantes vão pro A pela melhor volta
-  const naFinal = g.filter((l) => l.vai_pra_final);
+  const naFinal = g.filter((l) => l.vai_pra_final).map((l) => l.piloto);
   assert.equal(naFinal.length, 14);
-  assert.equal(naFinal.filter((l) => l.grupo === 'B').length, 7);
+  // 13 cabem pela soma; a 14ª vaga é W4 × X4 (15 pontos cada): X4 tem 47.300 na bateria 4, W4 48.300
+  assert.ok(naFinal.includes('X4') && !naFinal.includes('W4'));
+  assert.equal(naFinal.filter((n) => n.startsWith('Z')).length, 0);
+  assert.equal(q.blocos.Y.tabela[0].piloto, 'Y1');
   assert.equal(q.geral.definido, true);
   assert.equal(q.final.grid.length, 14);
   assert.equal(q.final.grid_pela_tomada, false);
-  assert.equal(q.final.grid[0].piloto, 'B1');
-  assert.equal(q.melhor_volta_do_dia.piloto, 'A14');
+  assert.equal(q.final.grid[0].piloto, 'Y1');
+  assert.equal(q.melhor_volta_do_dia.piloto, 'X1');
   assert.equal(q.em_curso, 'FINAL');
 });
 
-test('top-14 geral pode levar mais de 7 de um grupo', () => {
-  // grupo B inteiro faltou na B2 (14 pontos cada): o grupo A ocupa as vagas
-  const sessoes = {
-    B1_A: { status: 'homologado', linhas: folha(A) },
-    B2_A: { status: 'homologado', linhas: folha(A) },
-    B1_B: { status: 'homologado', linhas: folha(B) },
-    B2_B: { status: 'homologado', linhas: folha(B.slice(0, 1)) },
-  };
+test('bloco que não veio leva 14 na bateria inteira', () => {
+  const sessoes = { ...diaCompleto(), B2_YZ: { status: 'homologado', linhas: folha(Y) } };
   const q = calcularQuadro({ pilotos, sessoes });
-  const naFinal = q.geral.tabela.filter((l) => l.vai_pra_final);
-  assert.ok(naFinal.filter((l) => l.grupo === 'A').length > 7);
+  const z1 = q.geral.tabela.find((l) => l.piloto === 'Z1');
+  assert.equal(z1.b1.ausente, true);
+  assert.equal(z1.b1.pontos, 14);
 });
 
 test('campeão e pódio = resultado da FINAL; só vira campeão com a final homologada', () => {
-  const sessoes = {
-    B1_A: { status: 'homologado', linhas: folha(A) },
-    B2_A: { status: 'homologado', linhas: folha(A) },
-    B1_B: { status: 'homologado', linhas: folha(B) },
-    B2_B: { status: 'homologado', linhas: folha(B) },
-  };
-  const ordem = ['A7', 'B1', 'A1', 'B2', 'A2', 'B3', 'A3', 'B4', 'A4', 'B5', 'A5', 'B6', 'A6', 'B7'];
+  const sessoes = diaCompleto();
+  const naFinal = calcularQuadro({ pilotos, sessoes }).geral.tabela.filter((l) => l.vai_pra_final).map((l) => l.piloto);
+  const ordem = naFinal.slice().reverse(); // o 14º das baterias vence a final
   let q = calcularQuadro({ pilotos, sessoes: { ...sessoes, FINAL: { status: 'provisorio', linhas: folha(ordem) } } });
-  assert.deepEqual(q.final.podio.map((p) => p.piloto), ['A7', 'B1', 'A1']);
+  assert.deepEqual(q.final.podio.map((p) => p.piloto), ordem.slice(0, 3));
   assert.equal(q.final.campeao, null);
   q = calcularQuadro({ pilotos, sessoes: { ...sessoes, FINAL: { status: 'homologado', linhas: folha(ordem) } } });
-  // A7 tinha a PIOR soma entre os classificados (14) e mesmo assim é campeão: a final decide sozinha
-  assert.equal(q.final.campeao, 'A7');
-  assert.equal(q.final.classificacao[0].baterias, 14);
+  // X4 tinha a PIOR soma entre os classificados (15) e mesmo assim é campeão: a final decide sozinha
+  assert.equal(q.final.campeao, 'X4');
+  assert.equal(q.final.classificacao[0].baterias, 15);
 });
 
 test('grid da final sai da tomada da final quando ela existe', () => {
-  const sessoes = {
-    B1_A: { status: 'homologado', linhas: folha(A) },
-    B2_A: { status: 'homologado', linhas: folha(A) },
-    B1_B: { status: 'homologado', linhas: folha(B) },
-    B2_B: { status: 'homologado', linhas: folha(B) },
-    FINAL: { tomada: folha(['B7', 'A1']) },
-  };
+  const sessoes = { ...diaCompleto(), FINAL: { tomada: folha(['X4', 'Y1']) } };
   const q = calcularQuadro({ pilotos, sessoes });
   assert.equal(q.final.grid_pela_tomada, true);
-  assert.equal(q.final.grid[0].piloto, 'B7');
+  assert.equal(q.final.grid[0].piloto, 'X4');
   assert.equal(q.final.grid.length, 14);
 });
 
 test('empate exato na 14ª vaga vira aviso de sorteio', () => {
   const sem = (l) => ({ ...l, mv: null });
-  const sessoes = {
-    B1_A: { linhas: folha(A).map(sem) }, B2_A: { linhas: folha(A.slice().reverse()).map(sem) },
-    B1_B: { linhas: folha(B).map(sem) }, B2_B: { linhas: folha(B.slice().reverse()).map(sem) },
-  };
+  const sessoes = Object.fromEntries(Object.entries(diaCompleto()).map(([k, v]) => [k, { linhas: v.linhas.map(sem) }]));
   const q = calcularQuadro({ pilotos, sessoes });
   assert.ok(q.avisos.some((a) => a.includes('14ª vaga') && a.includes('sorteio')));
 });
@@ -162,10 +163,10 @@ test('nome da folha → nome do cadastro', () => {
 
 test('validação barra piloto fora da lista, repetido e posição dupla', () => {
   const e = validarSessao([
-    { piloto: 'A1', pos: 1 }, { piloto: 'A1', pos: 2 }, { piloto: 'X', pos: 2 }, { piloto: 'A3', pos: 3, mv: 'zz' },
+    { piloto: 'W1', pos: 1 }, { piloto: 'W1', pos: 2 }, { piloto: 'Fulano', pos: 2 }, { piloto: 'W3', pos: 3, mv: 'zz' },
   ], pilotos);
   assert.ok(e.some((x) => x.includes('repetido')));
-  assert.ok(e.some((x) => x.includes('"X"')));
+  assert.ok(e.some((x) => x.includes('"Fulano"')));
   assert.ok(e.some((x) => x.includes('posição repetida')));
   assert.ok(e.some((x) => x.includes('ilegível')));
 });

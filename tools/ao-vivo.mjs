@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 // Lança no quadro AO VIVO o que saiu da folha do kartódromo. A senha do admin entra por STDIN
 // (pipe do cofre) e nunca vai pra argv nem pra log:
-//   op read "op://AURORA/ADMIN_PASSWORD KART/password" | node tools/ao-vivo.mjs sessao copa-3 B1_A folha.json
+//   op read "op://AURORA/ADMIN_PASSWORD KART/password" | node tools/ao-vivo.mjs sessao copa-3 B1_WX folha.json
+// Códigos da 3ª Copa (formato opção A, 19/10/2026): B1_WX · B2_YZ · B3_WY · B4_XZ · FINAL
 // Comandos:
 //   ver     <slug>                         imprime o quadro calculado (público, sem senha)
-//   evento  <slug> <estado.json>           cria/atualiza título, horários, pilotos e grupos
+//   evento  <slug> <estado.json>           cria/atualiza título, horários, pilotos e blocos
 //   tomada  <slug> <CODIGO> <folha.json>   lança a tomada de tempo da corrida (vira o grid)
 //   sessao  <slug> <CODIGO> <folha.json> [status]   lança o resultado da corrida (nomes da folha são resolvidos)
 //   status  <slug> <CODIGO> <status>       aguardando | ao_vivo | provisorio | homologado
 //   tracado <slug> <texto>                 traçado do evento (ex.: 6,5 HP) — o quadro compara a melhor volta do dia com o recorde dele
 //   vincular <slug>                        liga cada piloto do evento ao cadastro (cria quem não existe)
 //   corrida <slug> <CODIGO> <folha.json>   folha de uma corrida em evento de histórico (formato 'corridas')
-//   sorteio <slug> <ISO-com-fuso>          marca o sorteio dos grupos (ex.: 2026-10-20T20:00:00-03:00) · 'cancelar' cancela
+//   sorteio <slug> <ISO-com-fuso>          marca o sorteio dos blocos (ex.: 2026-10-20T20:00:00-03:00) · 'cancelar' cancela
 //   aviso   <titulo> <texto.txt> [fixar]   publica no mural (o <slug> aqui é o título)
 // folha.json: { "linhas": [{ "nome": "GABRIEL LANNA ALMEIDA", "pos": 1, "kart": 8, "mv": "00:48.485", "voltas": 18 }],
 //               "observacoes": "..." }  — campos opcionais por linha: ausente, punicao (3 | "fim").

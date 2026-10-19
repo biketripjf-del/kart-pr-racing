@@ -110,6 +110,7 @@ function Corrida({ s }) {
 
 const pts = (b) => (b ? (b.ausente ? <span className="text-red-600">14</span> : b.pontos) : '—');
 
+// b1/b2 = a 1ª e a 2ª bateria DO PILOTO (cada bloco corre uma bateria em cada rodada)
 function Placar({ tabela, corte, titulo, nota, comGrupo }) {
   const linhas = tabela.map((l) => [
     l.correu ? l.pos : '—',
@@ -125,7 +126,7 @@ function Placar({ tabela, corte, titulo, nota, comGrupo }) {
         <span className="text-[11px] text-tx2">menor soma vence</span>
       </div>
       <Tabela
-        cab={['#', 'Piloto', ...(comGrupo ? ['Gr'] : []), 'B1', 'B2', 'Total', 'Melhor volta']}
+        cab={['#', 'Piloto', ...(comGrupo ? ['Bl'] : []), '1ª', '2ª', 'Total', 'Melhor volta']}
         linhas={linhas}
         destaque={(i) => (corte && i === corte - 1 ? 'border-b-2 border-b-[color:var(--color-gold)]' : '')
           + (tabela[i].vai_pra_final ? ' bg-[#e8eff7]' : '')}
@@ -135,17 +136,19 @@ function Placar({ tabela, corte, titulo, nota, comGrupo }) {
   );
 }
 
-function Grupo({ g, q }) {
-  const grupo = q.grupos[g];
-  if (!grupo.pilotos.length) return <div className="card p-6 text-center text-tx mt-4">Grupos saem do sorteio.</div>;
-  const naFinal = new Set(q.geral.tabela.filter((l) => l.vai_pra_final).map((l) => l.piloto));
-  const tabela = grupo.tabela.map((l) => ({ ...l, vai_pra_final: naFinal.has(l.piloto) }));
+// as 4 baterias, cada uma com 2 blocos de 7 (W+X, Y+Z, W+Y, X+Z)
+function Baterias({ q }) {
+  const baterias = Object.values(q.sessoes).filter((s) => s.tipo === 'bateria');
+  if (!Object.values(q.blocos).some((b) => b.pilotos.length)) {
+    return <div className="card p-6 text-center text-tx mt-4">Os blocos saem do sorteio.</div>;
+  }
   return (
     <>
-      <Placar tabela={tabela} titulo={`Placar do Grupo ${g}`}
-        nota="Pontos = posição (1º = 1 ponto). Perdeu a bateria = 14. Fundo azul = hoje está entre os 14 da final (aba Geral)." />
-      <Corrida s={q.sessoes[`B1_${g}`]} />
-      <Corrida s={q.sessoes[`B2_${g}`]} />
+      <div className="card mt-4 p-4 text-[12px] text-tx2">
+        4 blocos de 7. Cada bateria junta 2 blocos, e cada piloto corre 2 baterias contra 20 rivais diferentes.
+        Pontos = posição (1º = 1 ponto); perdeu a bateria = 14.
+      </div>
+      {baterias.map((s) => <Corrida key={s.codigo} s={s} />)}
     </>
   );
 }
@@ -155,7 +158,7 @@ function Geral({ q }) {
   return (
     <Placar tabela={geral.tabela} corte={14} comGrupo
       titulo={`Classificação geral${geral.definido ? '' : geral.parcial ? ' · parcial' : ''}`}
-      nota="Linha dourada = corte. Os 14 de cima correm a GRANDE FINAL. Desempate: melhor volta nas baterias." />
+      nota="Bl = bloco do sorteio. 1ª e 2ª = as 2 baterias do piloto. Linha dourada = corte: os 14 de cima correm a GRANDE FINAL. Desempate: melhor volta nas baterias." />
   );
 }
 
@@ -181,7 +184,7 @@ function Final({ q }) {
         {fin.resultado.length ? <Resultado s={fin} /> : (
           final.grid.length > 0 && (
             <>
-              <Tabela cab={['Larga', 'Piloto', 'Gr', 'Pts']}
+              <Tabela cab={['Larga', 'Piloto', 'Bl', 'Pts']}
                 linhas={final.grid.map((l) => [`${l.largada}º`, l.piloto, l.grupo, l.total])} />
               {!final.grid_pela_tomada && (
                 <div className="px-4 py-2 text-[11px] text-amber-700">Ordem pelos pontos — o grid de verdade sai da tomada de tempo da final.</div>
@@ -278,10 +281,10 @@ export default function AoVivo() {
     return <Casca sub="Ao vivo"><div className="text-center text-tx2 py-10">{erro ? 'Quadro ainda não aberto.' : 'Carregando…'}</div></Casca>;
   }
   const q = dados.quadro;
-  const abaPadrao = q.em_curso === 'FINAL' ? 'F' : (q.sessoes[q.em_curso]?.grupo || 'D');
+  const abaPadrao = q.em_curso === 'FINAL' ? 'F' : q.sessoes[q.em_curso]?.tipo === 'bateria' ? 'B' : 'D';
   const comecou = Object.values(q.sessoes).some((s) => s.resultado.length || s.tomada?.length);
   const atual = aba || (comecou ? abaPadrao : 'D');
-  const abas = [['D', 'Dia'], ['A', 'Grupo A'], ['B', 'Grupo B'], ['G', 'Geral'], ['F', 'Final']];
+  const abas = [['D', 'Dia'], ['B', 'Baterias'], ['G', 'Geral'], ['F', 'Final']];
 
   return (
     <Casca sub={[dados.evento.titulo, dados.evento.subtitulo].filter(Boolean).join(' · ')}>
@@ -304,14 +307,14 @@ export default function AoVivo() {
       {q.avisos.map((a) => (
         <div key={a} className="mt-3 flex items-center gap-2 text-sm text-amber-700"><AlertTriangle size={14} />{a}</div>
       ))}
-      <div className="mt-4 grid grid-cols-5 gap-1 p-1 rounded-xl bg-white border border-[#e3e9f1]">
+      <div className="mt-4 grid grid-cols-4 gap-1 p-1 rounded-xl bg-white border border-[#e3e9f1]">
         {abas.map(([k, t]) => (
           <button key={k} onClick={() => setAba(k)}
             className={`py-2 rounded-lg text-[13px] font-semibold ${atual === k ? 'bg-[color:var(--color-brand)] text-white' : 'text-tx'}`}>{t}</button>
         ))}
       </div>
       {atual === 'D' && <Dia dados={dados} />}
-      {(atual === 'A' || atual === 'B') && <Grupo g={atual} q={q} />}
+      {atual === 'B' && <Baterias q={q} />}
       {atual === 'G' && <Geral q={q} />}
       {atual === 'F' && <Final q={q} />}
     </Casca>

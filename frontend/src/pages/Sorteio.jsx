@@ -4,17 +4,24 @@ import { api } from '../api.js';
 import { Casca, Avatar, Contador, quandoBRT } from '../components/Marca.jsx';
 import { AdminSorteio, useAdmin } from '../components/AdminApp.jsx';
 
-// Sorteio dos grupos AO VIVO. Quem manda é o servidor: ele começa na hora marcada e revela 1 nome a cada 5 s.
+// Sorteio dos blocos AO VIVO (4 blocos de 7, W/X/Y/Z, que se misturam nas baterias — formato opção A, 19/10/2026). Quem manda é o servidor: ele começa na hora marcada e revela 1 nome a cada 5 s.
 // A tela só pergunta (de 1,5 em 1,5 s) e anima. Os nomes ainda não sorteados nunca chegam aqui.
 const PERGUNTA_MS = 1500;
+const BLOCOS = ['W', 'X', 'Y', 'Z'];
+const COR = { W: 'bg-[color:var(--color-brand)]', X: 'bg-[color:var(--color-gold)]', Y: 'bg-emerald-600', Z: 'bg-red-600' };
+const CORRE = { W: 'baterias 1 e 3', X: 'baterias 1 e 4', Y: 'baterias 2 e 3', Z: 'baterias 2 e 4' };
 
 function ColunaGrupo({ g, nomes, fotos, ultimo }) {
   return (
     <div className="card p-3">
       <div className="flex items-center justify-between">
-        <div className="font-extrabold text-xl display">GRUPO {g}</div>
+        <div className="flex items-center gap-2">
+          <span className={`w-6 h-6 rounded-md ${COR[g]} text-white text-sm font-extrabold grid place-items-center`}>{g}</span>
+          <span className="font-extrabold text-lg display">BLOCO {g}</span>
+        </div>
         <div className="text-xs text-tx2 tabular-nums">{nomes.length}</div>
       </div>
+      <div className="text-[11px] text-tx3">{CORRE[g]}</div>
       <div className="mt-2 space-y-1.5">
         {nomes.map((r) => (
           <div key={r.nome} className={`flex items-center gap-2 text-sm rounded-lg px-1 py-0.5 ${r.nome === ultimo ? 'bg-[color:var(--color-brand)]/30 animate-[aparece_.6s_ease-out]' : ''}`}>
@@ -70,31 +77,29 @@ export default function Sorteio() {
   }, [girando, agora, restantes]);
 
   const painel = admin ? <AdminSorteio naTela /> : null;
-  if (s === undefined) return <Casca sub="Sorteio dos grupos"><div className="text-center text-tx2 py-10">Carregando…</div></Casca>;
+  if (s === undefined) return <Casca sub="Sorteio dos blocos"><div className="text-center text-tx2 py-10">Carregando…</div></Casca>;
   if (s === null) {
     return (
-      <Casca sub="Sorteio dos grupos">
+      <Casca sub="Sorteio dos blocos">
         {painel}
         <div className="card p-8 text-center text-tx">
           <Shuffle className="mx-auto text-[color:var(--color-gold)] mb-3" size={40} />
-          O sorteio dos grupos ainda não foi marcado. Quando for, a contagem aparece aqui e o sorteio roda sozinho, ao vivo, pra todo mundo ao mesmo tempo.
+          O sorteio dos blocos ainda não foi marcado. Quando for, a contagem aparece aqui e o sorteio roda sozinho, ao vivo, pra todo mundo ao mesmo tempo.
         </div>
       </Casca>
     );
   }
 
-  const A = revelados.filter((r) => r.grupo === 'A');
-  const B = revelados.filter((r) => r.grupo === 'B');
 
   return (
-    <Casca sub={`Sorteio dos grupos${s.titulo ? ` · ${s.titulo}` : ''}`}>
+    <Casca sub={`Sorteio dos blocos${s.titulo ? ` · ${s.titulo}` : ''}`}>
       {painel}
       {s.fase === 'contagem' && (
         <div className="card p-5">
           <div className="text-center text-sm text-tx">Começa sozinho em <b>{quandoBRT(s.agendado_para)}</b> (horário de Brasília)</div>
           <div className="mt-4"><Contador grande ms={new Date(s.agendado_para).getTime() - agoraServ} /></div>
           <div className="mt-4 text-center text-xs text-tx2">
-            {s.inscritos} pilotos no pote · 1 nome a cada {Math.round(s.passo_ms / 1000)} s · alterna Grupo A e Grupo B
+            {s.inscritos} pilotos no pote · 1 nome a cada {Math.round(s.passo_ms / 1000)} s · rodízio W, X, Y, Z (7 em cada bloco)
             {s.cabecas?.length ? ` · ${s.cabecas.length} cabeças de chave saem primeiro` : ' · sem cabeça de chave'}
           </div>
           {todos.length > 0 && (
@@ -120,7 +125,7 @@ export default function Sorteio() {
               <div key={ultimo.nome} className="animate-[aparece_.6s_ease-out] flex flex-col items-center">
                 <Avatar id={ultimo.piloto_id} v={fotos[ultimo.piloto_id]} nome={ultimo.nome} tam={96} />
                 <div className="mt-3 text-2xl font-extrabold display">{ultimo.nome}</div>
-                <div className={`mt-1 px-3 py-0.5 rounded-full text-sm font-bold ${ultimo.grupo === 'A' ? 'bg-[color:var(--color-brand)] text-white' : 'bg-[color:var(--color-gold)] text-white'}`}>GRUPO {ultimo.grupo}</div>
+                <div className={`mt-1 px-3 py-0.5 rounded-full text-sm font-bold text-white ${COR[ultimo.grupo] || 'bg-slate-500'}`}>BLOCO {ultimo.grupo}</div>
               </div>
             ) : (
               <div className="text-tx2">Primeiro nome saindo…</div>
@@ -131,15 +136,16 @@ export default function Sorteio() {
 
       {s.fase === 'concluido' && (
         <div className="card p-4 text-center">
-          <div className="text-xl font-extrabold display">GRUPOS DEFINIDOS</div>
+          <div className="text-xl font-extrabold display">BLOCOS DEFINIDOS</div>
           <div className="text-xs text-tx2 mt-1">Já estão no quadro ao vivo.</div>
         </div>
       )}
 
       {revelados.length > 0 && (
         <div className="mt-4 grid grid-cols-2 gap-3">
-          <ColunaGrupo g="A" nomes={A} fotos={fotos} ultimo={ultimo?.nome} />
-          <ColunaGrupo g="B" nomes={B} fotos={fotos} ultimo={ultimo?.nome} />
+          {BLOCOS.map((g) => (
+            <ColunaGrupo key={g} g={g} nomes={revelados.filter((r) => r.grupo === g)} fotos={fotos} ultimo={ultimo?.nome} />
+          ))}
         </div>
       )}
 
@@ -147,7 +153,7 @@ export default function Sorteio() {
         <details className="card mt-4 p-4 text-sm">
           <summary className="cursor-pointer font-semibold flex items-center gap-2"><ShieldCheck size={16} className="text-emerald-700" /> Como conferir este sorteio</summary>
           <div className="mt-3 text-tx space-y-2">
-            <p>A ordem saiu de um embaralhamento com a semente abaixo, gerada na hora em que o sorteio começou e escondida até o último nome. Os nomes entram em ordem alfabética antes de embaralhar, e o 1º sorteado vai pro Grupo A, o 2º pro B, e assim por diante.</p>
+            <p>A ordem saiu de um embaralhamento com a semente abaixo, gerada na hora em que o sorteio começou e escondida até o último nome. Os nomes entram em ordem alfabética antes de embaralhar, e os sorteados vão em rodízio: o 1º pro bloco W, o 2º pro X, o 3º pro Y, o 4º pro Z, o 5º volta pro W, e assim por diante.</p>
             <p>Com a semente e a lista, qualquer pessoa refaz o sorteio e chega exatamente no mesmo resultado.</p>
             <div className="font-mono text-xs bg-[#f3f6fa] border border-[#d5dfeb] rounded-lg p-2 break-all">semente: {s.semente}</div>
           </div>

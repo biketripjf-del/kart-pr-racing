@@ -26,7 +26,7 @@ export const ABAS = [['/', 'Início', Home], ['/ao-vivo', 'Ao vivo', Radio], ['/
 export const MAIS = [
   ['/ficha', 'Minha ficha', UserRound, 'Foto, contato, peso e altura'],
   ['/caronas', 'Caronas', Car, 'Quem leva quem pra Volta Redonda'],
-  ['/sorteio', 'Sorteio dos grupos', Shuffle, 'Ao vivo, pra todo mundo ao mesmo tempo'],
+  ['/sorteio', 'Sorteio dos blocos', Shuffle, 'Ao vivo, pra todo mundo ao mesmo tempo'],
   ['/comparar', 'Comparar pilotos', Swords, 'Lado a lado e confronto direto'],
   ['/midia', 'Fotos e vídeos', Camera, 'Suba o que você gravou no dia'],
   ['/dicas', 'Dicas de pilotagem', GraduationCap, 'Traçado, freio, ultrapassagem'],

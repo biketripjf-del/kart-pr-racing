@@ -1,14 +1,15 @@
-// Sorteio dos grupos A e B AO VIVO (pedido do Brunner 14/10/2026: "quero o sorteio das chaves aut igual ao pedal").
+// Sorteio dos blocos W, X, Y e Z AO VIVO (pedido do Brunner 14/10/2026: "quero o sorteio das chaves aut igual ao pedal";
+// formato opção A em 19/10/2026 — 4 blocos de 7 que se misturam nas baterias; antes eram 2 grupos de 14, A e B).
 // Desenho herdado do sorteio de equipes do Pedal da Madrugada: semente gravada (qualquer um refaz e chega no mesmo
 // resultado), 1 nome a cada 5 s, ninguém precisa clicar. Diferença: aqui a revelação é função do RELÓGIO
 // (revelados = tempo desde o início / passo), então não existe "passo perdido" nem laço que dorme demais
 // (o show do Pedal de 01/10 saiu a 12 s por nome por causa do laço).
 // Funções PURAS — o banco entra como fotografia.
-import { normalizar } from './aoVivo.js';
+import { normalizar, BLOCOS as GRUPOS } from './aoVivo.js';
 
 export const PASSO_MS = 5000;
-export const RESPIRO_MS = 4000; // o último nome termina de animar antes de gravar os grupos
-export const GRUPOS = ['A', 'B'];
+export const RESPIRO_MS = 4000; // o último nome termina de animar antes de gravar os blocos
+export { GRUPOS };
 
 // PRNG determinístico (mulberry32) semeado por hash da string — o mesmo do Pedal.
 export function prng(seed) {
@@ -35,15 +36,15 @@ function embaralhar(lista, rnd) {
 // Ordem alfabética antes de embaralhar: a ordem em que os nomes foram cadastrados não muda o resultado.
 const alfabetica = (nomes) => [...nomes].sort((x, y) => normalizar(x).localeCompare(normalizar(y)));
 
-// Ordem da revelação. Cabeças de chave (se houver) saem primeiro, alternando A/B; depois o resto, com a
-// alternância continuando de onde os cabeças pararam — os dois grupos fecham com o mesmo tamanho.
+// Ordem da revelação. Cabeças de chave (se houver) saem primeiro, em rodízio W→X→Y→Z; depois o resto, com o
+// rodízio continuando de onde os cabeças pararam — os 4 blocos fecham com o mesmo tamanho.
 export function montarOrdem(participantes, semente, cabecas = []) {
   const rnd = prng(semente);
   const setCab = new Set(cabecas);
   const cab = embaralhar(alfabetica(participantes.filter((n) => setCab.has(n))), rnd);
   const resto = embaralhar(alfabetica(participantes.filter((n) => !setCab.has(n))), rnd);
-  // alternar pelo índice já fecha os grupos com no máximo 1 de diferença (28 → 14/14, 27 → 14/13)
-  return [...cab, ...resto].map((nome, i) => ({ nome, grupo: GRUPOS[i % 2], cabeca: setCab.has(nome) }));
+  // rodízio pelo índice já fecha os blocos com no máximo 1 de diferença (28 → 7/7/7/7, 27 → 7/7/7/6)
+  return [...cab, ...resto].map((nome, i) => ({ nome, grupo: GRUPOS[i % GRUPOS.length], cabeca: setCab.has(nome) }));
 }
 
 // Fotografia do sorteio num instante. s = linha da tabela sorteios (ms já convertidos).
