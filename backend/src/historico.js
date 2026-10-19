@@ -15,6 +15,9 @@
 import { calcularQuadro, resultadoDaSessao, normalizar, POSICAO_DE_QUEM_FALTA } from './aoVivo.js';
 
 const menor = (a, b) => (a == null ? b : b == null ? a : Math.min(a, b));
+// o mesmo piloto (mesmo piloto_id) pode ter nomes diferentes nas folhas — "Guilherme" em 2020, "Guilherme Teixeira"
+// depois (19/10): nas tabelas vale o nome da folha MAIS RECENTE, seja qual for a ordem em que os eventos chegam.
+const nomeRecente = (a, nome, data) => { if (a._data == null || String(data) >= a._data) { a.piloto = nome; a._data = String(data); } };
 const chaveDe = (p, nome) => (p?.piloto_id != null ? `id:${p.piloto_id}` : `nome:${normalizar(nome)}`);
 
 function indicePilotos(estado) {
@@ -137,6 +140,7 @@ export function rankingCampeonato(eventos) {
     for (const l of c.linhas) {
       if (!pilotos.has(l.chave)) pilotos.set(l.chave, { chave: l.chave, piloto: l.piloto, piloto_id: l.piloto_id, por_evento: {} });
       const p = pilotos.get(l.chave);
+      nomeRecente(p, l.piloto, c.data);
       p.por_evento[c.slug] = l.pos;
       if (l.piloto_id != null) p.piloto_id = l.piloto_id;
     }
@@ -213,12 +217,13 @@ export function rankingRitmo(eventos) {
   for (const p of validos.flatMap((e) => participacoesDoEvento(e))) {
     if (p.ausente || p.ritmo == null) continue;
     const a = acc.get(p.chave) || { chave: p.chave, piloto: p.piloto, piloto_id: p.piloto_id, ritmos: [], vezes_mais_rapido: 0 };
+    nomeRecente(a, p.piloto, p.data);
     a.ritmos.push(p.ritmo);
     if (p.ritmo === 100) a.vezes_mais_rapido++;
     if (p.piloto_id != null) a.piloto_id = p.piloto_id;
     acc.set(p.chave, a);
   }
-  const tabela = [...acc.values()].map(({ ritmos, ...a }) => ({ ...a, ritmo: media2(ritmos), corridas: ritmos.length, melhor_ritmo: Math.min(...ritmos) }))
+  const tabela = [...acc.values()].map(({ ritmos, _data, ...a }) => ({ ...a, ritmo: media2(ritmos), corridas: ritmos.length, melhor_ritmo: Math.min(...ritmos) }))
     .sort((a, b) => a.ritmo - b.ritmo || b.corridas - a.corridas || a.piloto.localeCompare(b.piloto));
   tabela.forEach((l, i) => { l.pos = i + 1; });
   return {
@@ -266,11 +271,12 @@ export function rivaisDoPiloto(eventos, chave) {
     for (const o of linhas) {
       if (o.chave === chave) continue;
       const a = acc.get(o.chave) || { chave: o.chave, piloto: o.piloto, piloto_id: o.piloto_id, encontros: 0, vitorias: 0, derrotas: 0 };
+      nomeRecente(a, o.piloto, o.data);
       a.encontros++;
       if (eu.pos < o.pos) a.vitorias++; else a.derrotas++;
       if (o.piloto_id != null) a.piloto_id = o.piloto_id;
       acc.set(o.chave, a);
     }
   }
-  return [...acc.values()].sort((a, b) => b.encontros - a.encontros || Math.abs(a.vitorias - a.derrotas) - Math.abs(b.vitorias - b.derrotas) || a.piloto.localeCompare(b.piloto));
+  return [...acc.values()].map(({ _data, ...a }) => a).sort((a, b) => b.encontros - a.encontros || Math.abs(a.vitorias - a.derrotas) - Math.abs(b.vitorias - b.derrotas) || a.piloto.localeCompare(b.piloto));
 }

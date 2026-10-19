@@ -299,3 +299,19 @@ test('números do piloto: vitórias, pódios, média e melhor volta por traçado
   assert.equal(n.melhor_volta_por_tracado['6,5 HP'].mv_ms, 47100);
   assert.equal(n.eventos[0].pos, 2);
 });
+
+test('mesmo piloto com nome diferente em folha antiga: tabelas mostram o nome da folha mais recente (19/10)', () => {
+  // P1 aparece como "Gui" no evento de 2020 (mesmo piloto_id 1); a ordem de entrada dos eventos não pode importar
+  const antigo = evR('a', '2020-01-01', [{ ...R1, linhas: R1.linhas.map((l) => (l.piloto === P(1) ? { ...l, piloto: 'Gui' } : l)) }]);
+  antigo.estado.pilotos = antigo.estado.pilotos.map((p) => (p.piloto_id === 1 ? { ...p, nome: 'Gui' } : p));
+  const novo = evR('b', '2026-01-01', [R2]);
+  for (const evs of [[antigo, novo], [novo, antigo]]) {
+    const rk = rankingCampeonato(evs).tabela.find((l) => l.piloto_id === 1);
+    assert.equal(rk.piloto, P(1), 'ranking');
+    assert.equal(rankingRitmo(evs).tabela.find((l) => l.piloto_id === 1).piloto, P(1), 'ritmo');
+    const riv = rivaisDoPiloto(evs, 'id:2').find((l) => l.piloto_id === 1);
+    assert.equal(riv.piloto, P(1), 'rivais');
+    assert.equal(riv._data, undefined, 'campo interno não vaza');
+    assert.equal(rankingRitmo(evs).tabela.find((l) => l.piloto_id === 1)._data, undefined);
+  }
+});
