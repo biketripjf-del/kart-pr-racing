@@ -33,8 +33,9 @@ router.get('/ranking', ah(async (req, res) => {
 
 router.get('/ritmo', ah(async (req, res) => {
   const r = rankingRitmo(await eventos());
-  const c = await cartoes(r.tabela.map((l) => l.piloto_id));
+  const c = await cartoes([...r.tabela, ...r.poucas].map((l) => l.piloto_id));
   r.tabela = r.tabela.map((l) => ({ ...l, ...(c.get(l.piloto_id) || {}) }));
+  r.poucas = r.poucas.map((l) => ({ ...l, ...(c.get(l.piloto_id) || {}) }));
   res.set('Cache-Control', 'no-store');
   res.json(r);
 }));

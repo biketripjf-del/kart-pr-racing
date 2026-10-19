@@ -74,36 +74,43 @@ function Abas({ aba, setAba }) {
 function Ritmo() {
   const [r, setR] = useState(null);
   const [regra, setRegra] = useState(false);
-  useEffect(() => { api.get('/historico/ritmo').then((x) => setR(x.data)).catch(() => setR({ tabela: [] })); }, []);
+  useEffect(() => { api.get('/historico/ritmo').then((x) => setR(x.data)).catch(() => setR({ tabela: [], poucas: [] })); }, []);
   if (!r) return <div className="text-center text-tx2 py-10">Carregando…</div>;
-  if (!r.tabela.length) return <div className="card p-8 text-center text-tx">Ainda não há corrida com tempo pra medir ritmo.</div>;
+  const poucas = r.poucas || [];
+  if (!r.tabela.length && !poucas.length) return <div className="card p-8 text-center text-tx">Ainda não há corrida com tempo pra medir ritmo.</div>;
+  // quem tem menos de 3 corridas aparece embaixo, sem posição (Brunner 19/10: mínimo de 3 corridas pra entrar no ranking)
+  const linha = (l) => {
+    const corpo = (
+      <div className="flex items-center gap-3 px-3 py-2.5">
+        <span className="w-8 h-8 rounded-md bg-[#eef3f9] border border-[#d5dfeb] flex items-center justify-center display text-[15px] text-brand-dark tabular-nums shrink-0">{l.pos ?? '–'}</span>
+        <span className={`w-1 self-stretch rounded-full shrink-0 ${l.pos ? 'bg-brand' : 'bg-[#d5dfeb]'}`} />
+        <Avatar id={l.piloto_id} v={l.foto_v} nome={l.piloto} tam={36} />
+        <span className="flex-1 min-w-0">
+          <span className="block font-semibold truncate">{l.piloto}</span>
+          <span className="block text-[11px] text-tx2 truncate">
+            {l.corridas} corrida{l.corridas > 1 ? 's' : ''}{l.vezes_mais_rapido ? ` · mais rápido em ${l.vezes_mais_rapido}` : ''}
+          </span>
+        </span>
+        <span className={`text-right shrink-0 font-extrabold tabular-nums ${l.pos ? 'text-brand-dark' : 'text-tx2'}`}>{atras(l.ritmo)}</span>
+        {l.piloto_id && <ChevronRight size={16} className="text-tx3 shrink-0" />}
+      </div>
+    );
+    return l.piloto_id
+      ? <Link key={l.chave} to={`/piloto/${l.piloto_id}`} className="block hover:bg-[#f3f6fa]">{corpo}</Link>
+      : <div key={l.chave}>{corpo}</div>;
+  };
   return (
     <>
-      <div className="text-xs text-tx2 mb-2">Quanto cada um fica, em média, atrás da volta mais rápida de cada corrida. Compara anos e traçados diferentes na mesma régua.</div>
-      <div className="card overflow-hidden divide-y divide-[#e3e9f1]">
-        {r.tabela.map((l) => {
-          const corpo = (
-            <div className="flex items-center gap-3 px-3 py-2.5">
-              <span className="w-8 h-8 rounded-md bg-[#eef3f9] border border-[#d5dfeb] flex items-center justify-center display text-[15px] text-brand-dark tabular-nums shrink-0">{l.pos}</span>
-              <span className="w-1 self-stretch rounded-full bg-brand shrink-0" />
-              <Avatar id={l.piloto_id} v={l.foto_v} nome={l.piloto} tam={36} />
-              <span className="flex-1 min-w-0">
-                <span className="block font-semibold truncate">{l.piloto}</span>
-                <span className="block text-[11px] text-tx2 truncate">
-                  {l.corridas} corrida{l.corridas > 1 ? 's' : ''}{l.vezes_mais_rapido ? ` · mais rápido em ${l.vezes_mais_rapido}` : ''}
-                </span>
-              </span>
-              <span className="text-right shrink-0 font-extrabold tabular-nums text-brand-dark">{atras(l.ritmo)}</span>
-              {l.piloto_id && <ChevronRight size={16} className="text-tx3 shrink-0" />}
-            </div>
-          );
-          return l.piloto_id
-            ? <Link key={l.chave} to={`/piloto/${l.piloto_id}`} className="block hover:bg-[#f3f6fa]">{corpo}</Link>
-            : <div key={l.chave}>{corpo}</div>;
-        })}
-      </div>
+      <div className="text-xs text-tx2 mb-2">Quanto cada um fica, em média, atrás da volta mais rápida de cada corrida. Compara anos e traçados diferentes na mesma régua. Entra quem tem {r.minimo_corridas ?? 3} corridas ou mais.</div>
+      {r.tabela.length > 0 && <div className="card overflow-hidden divide-y divide-[#e3e9f1]">{r.tabela.map(linha)}</div>}
+      {poucas.length > 0 && (
+        <>
+          <div className="mt-4 mb-2 text-sm font-semibold text-tx">Menos de {r.minimo_corridas ?? 3} corridas: ainda não entram ({poucas.length})</div>
+          <div className="card overflow-hidden divide-y divide-[#e3e9f1]">{poucas.map(linha)}</div>
+        </>
+      )}
       <button onClick={() => setRegra(!regra)} className="mt-3 flex items-center gap-1.5 text-xs text-tx2"><Info size={13} /> Como funciona o ritmo</button>
-      {regra && <div className="mt-2 text-[12px] text-tx2 card p-3">{r.regra} Corrida com menos de 3 tempos não entra. Quem tem poucas corridas pode subir ou cair muito com a próxima.</div>}
+      {regra && <div className="mt-2 text-[12px] text-tx2 card p-3">{r.regra} Corrida com menos de 3 tempos não entra.</div>}
     </>
   );
 }

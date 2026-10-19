@@ -320,7 +320,7 @@ test('ritmo: melhor volta ÷ melhor da corrida × 100; corrida com menos de 3 vo
 });
 
 test('ranking de ritmo: média de todas as corridas, menor = mais rápido', () => {
-  const r = rankingRitmo([evR('a', '2024-01-01', [R1]), evR('b', '2026-01-01', [R2])]);
+  const r = rankingRitmo([evR('a', '2024-01-01', [R1]), evR('b', '2026-01-01', [R2])], { minimo: 1 });
   const de = (n) => r.tabela.find((l) => l.piloto_id === n);
   assert.equal(de(1).ritmo, 100.5, 'P1: 100 e 101');
   assert.equal(de(2).ritmo, 100.5, 'P2: 101 e 100');
@@ -328,6 +328,16 @@ test('ranking de ritmo: média de todas as corridas, menor = mais rápido', () =
   assert.equal(de(4).ritmo, 102);
   assert.equal(r.tabela[r.tabela.length - 1].piloto_id, 3, 'P3 (103) por último');
   assert.equal(rankingRitmo([{ ...evR('t', '2026-01-01', [R1]), estado: { ...evR('t', '2026-01-01', [R1]).estado, teste: true } }]).tabela.length, 0, 'teste não entra');
+});
+
+test('ranking de ritmo: mínimo de 3 corridas pra ter posição; quem tem menos vai pra "poucas"', () => {
+  // P3 é o mais rápido de R3 (100) e só corre 2 vezes no total; P1 e P2 correm R1, R2 e R3
+  const r = rankingRitmo([evR('a', '2024-01-01', [R1, R3]), evR('b', '2026-01-01', [R2])]);
+  assert.equal(r.minimo_corridas, 3);
+  assert.deepEqual(r.tabela.map((l) => [l.piloto_id, l.pos, l.corridas]), [[1, 1, 3], [2, 2, 3]], 'só P1 e P2 têm 3 corridas');
+  assert.deepEqual(r.poucas.map((l) => [l.piloto_id, l.corridas]).sort(), [[3, 2], [4, 1]], 'P3 (2 corridas) e P4 (1) ficam de fora');
+  assert.ok(r.poucas.every((l) => l.pos == null), 'quem não entra não tem posição');
+  assert.ok(r.poucas.some((l) => l.piloto_id === 3 && l.melhor_ritmo === 100), 'P3 foi o mais rápido de uma corrida e mesmo assim fica fora');
 });
 
 test('recordes: por traçado, top 3 de pilotos diferentes; traçado diferente não se mistura', () => {
@@ -402,10 +412,10 @@ test('mesmo piloto com nome diferente em folha antiga: tabelas mostram o nome da
   for (const evs of [[antigo, novo], [novo, antigo]]) {
     const rk = rankingCampeonato(evs).tabela.find((l) => l.piloto_id === 1);
     assert.equal(rk.piloto, P(1), 'ranking');
-    assert.equal(rankingRitmo(evs).tabela.find((l) => l.piloto_id === 1).piloto, P(1), 'ritmo');
+    assert.equal(rankingRitmo(evs, { minimo: 1 }).tabela.find((l) => l.piloto_id === 1).piloto, P(1), 'ritmo');
     const riv = rivaisDoPiloto(evs, 'id:2').find((l) => l.piloto_id === 1);
     assert.equal(riv.piloto, P(1), 'rivais');
     assert.equal(riv._data, undefined, 'campo interno não vaza');
-    assert.equal(rankingRitmo(evs).tabela.find((l) => l.piloto_id === 1)._data, undefined);
+    assert.equal(rankingRitmo(evs, { minimo: 1 }).tabela.find((l) => l.piloto_id === 1)._data, undefined);
   }
 });
