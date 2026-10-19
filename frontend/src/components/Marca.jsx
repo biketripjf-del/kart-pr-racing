@@ -1,13 +1,39 @@
 import { useEffect, useState } from 'react';
-import { Home, Radio, Trophy, Users, LayoutGrid, UserRound, Shuffle, Swords, Camera, GraduationCap, Megaphone, ScrollText, Car } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Home, Radio, Trophy, Users, LayoutGrid, UserRound, Shuffle, Swords, Camera, GraduationCap, Megaphone, ScrollText, Car, ChevronLeft } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getToken, setToken } from '../api.js';
+
+// Botão de voltar (Brunner 19/10/2026: "sentindo falta de botão de voltar"). Instalado na tela de início o app abre
+// sem a barra do navegador, então não existe o "voltar" dele. Nas 5 abas de baixo não aparece (elas já são o menu).
+// Volta pelo histórico do próprio app; se a página foi aberta direto por um link, sobe pra página-mãe.
+const RAIZES = ['/', '/ranking', '/pilotos', '/mais'];
+export const ehRaiz = (pathname) => RAIZES.includes(pathname) || pathname === '/ao-vivo' || pathname.startsWith('/ao-vivo/');
+export function paginaMae(pathname) {
+  if (pathname.startsWith('/piloto/')) return '/pilotos';
+  if (pathname.startsWith('/admin') || pathname.startsWith('/etapa/')) return '/';
+  return '/mais';
+}
+
+function Voltar() {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  if (ehRaiz(pathname)) return null;
+  // react-router guarda em history.state.idx a posição dentro do app: 0 = a 1ª página aberta nesta aba
+  const temHistorico = (window.history.state?.idx ?? 0) > 0;
+  return (
+    <button onClick={() => (temHistorico ? navigate(-1) : navigate(paginaMae(pathname)))} aria-label="Voltar"
+      className="-ml-2 shrink-0 w-9 h-9 grid place-items-center rounded-full active:bg-white/15">
+      <ChevronLeft size={26} strokeWidth={2.4} />
+    </button>
+  );
+}
 
 // cabeçalho na identidade Pacheco & Reis: faixa marinho, símbolo R do logo, letras expandidas como as do logo
 export function Marca() {
   return (
     <header className="relative overflow-hidden bg-[color:var(--color-brand-dark)] text-white" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
+        <Voltar />
         <Link to="/" className="flex items-center gap-3 min-w-0">
           <img src="/img/simbolo-branco.png" alt="" className="h-9 w-auto shrink-0" />
           <span className="leading-none min-w-0">
