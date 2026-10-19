@@ -41,14 +41,20 @@ function pilotosProjetados(eventos, etapa) {
 const voltaFicticia = (p, i) => Math.round(47300 * (p.ritmo ?? 106 + i * 0.1) / 100);
 
 function encaixar(ordem, pedidos) {
-  // pedidos: [[nome, pos]] — do 1º pedido pro último, cada um vai pra posição dele
-  let o = [...ordem];
-  for (const [nome, pos] of pedidos.sort((a, b) => a[1] - b[1])) {
-    if (!o.includes(nome)) continue;
-    o = o.filter((n) => n !== nome);
-    o.splice(Math.max(0, Math.min(o.length, pos - 1)), 0, nome);
+  // pedidos: [[nome, pos]] — cada pedido TRAVA a posição dele (mexer em outro piloto não empurra quem já foi escolhido;
+  // bug de 19/10: Brunner pedido 3º saía 2º porque o Gabriel, à frente na mesma bateria, foi mandado pro 14º).
+  // Dois pedidos na mesma posição: o 2º fica com a próxima livre. Quem não foi mexido preenche o resto na ordem do ritmo.
+  const vagas = new Array(ordem.length).fill(null);
+  const fixos = new Set();
+  for (const [nome, pos] of [...pedidos].sort((a, b) => a[1] - b[1])) {
+    if (!ordem.includes(nome)) continue;
+    let i = Math.max(0, Math.min(ordem.length - 1, pos - 1));
+    while (i < vagas.length && vagas[i] != null) i++;
+    if (i >= vagas.length) { i = vagas.lastIndexOf(null); if (i < 0) continue; }
+    vagas[i] = nome; fixos.add(nome);
   }
-  return o;
+  const resto = ordem.filter((n) => !fixos.has(n));
+  return vagas.map((v) => v ?? resto.shift());
 }
 
 export function simular(eventos, ajustes = {}) {
