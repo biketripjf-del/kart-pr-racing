@@ -6,7 +6,7 @@ import { Casca, Avatar, dataBR, volta, atras } from '../components/Marca.jsx';
 
 // Ranking do campeonato (Brunner 14/10: "tem que ser lista (...) tem que ter o podio. igual ao ranking do app do pedal
 // mas com estilo de corrida"). Pódio 2-1-3 em degraus com zebra de pista; o resto como torre de cronometragem.
-// Regra (19/10/2026): pontos estilo F1 por evento, avulsa vale metade, falta = 0, mais pontos vence (historico.js).
+// Regra (19/10/2026): pontos estilo F1 por evento, todas as corridas do ano valem igual, falta = 0, mais pontos vence (historico.js).
 
 const pts = (n) => Number(n).toLocaleString('pt-BR');
 
@@ -110,9 +110,9 @@ function Ritmo() {
 
 // Classificação de cada edição (Brunner 19/10: "rankin por evento tbm"). Chips de evento no topo; abre na edição mais
 // recente que já correu. Na Copa 3 o pódio é o da final; nas antigas, a soma das posições.
-// botão de cada evento na aba Eventos. O Grande Prêmio é UM evento da Copa do ano, não a Copa inteira (Brunner 19/10:
+// botão de cada evento na aba Eventos. O dia 23 é UM evento da Copa do ano, não a Copa inteira (Brunner 19/10:
 // "ta errado esse 3ª Copa aí, é Corridas de 23/10") — o título dele começa por "3ª Copa ·", que é o nome da temporada.
-const rotuloDoEvento = (e) => (e.formato === 'copa3' ? `Grande Prêmio ${dataBR(e.data).slice(0, 5)}` : e.titulo?.replace(/\s*·.*$/, '') || e.slug);
+const rotuloDoEvento = (e) => (e.formato === 'copa3' ? `Corridas de ${dataBR(e.data).slice(0, 5)}` : e.titulo?.replace(/\s*·.*$/, '') || e.slug);
 
 function Eventos() {
   const [evs, setEvs] = useState(null);
@@ -296,7 +296,7 @@ function Pontos({ aba, setAba }) {
           <p>{r.regra}</p>
           {r.desempate && <p><b className="text-tx">Empate em pontos:</b> {r.desempate.map((d, i) => `${i + 1}) ${d}`).join(' · ')}.</p>}
           <p>O ranking é por ano: cada Copa (1ª em 2020, 2ª em 2024, 3ª em 2026) começa do zero e soma as corridas daquele ano. "Toda a história" soma todas.</p>
-          {r.eventos.map((e) => <p key={e.slug}><b className="text-tx">{dataBR(e.data)} · {curto(e.titulo)}</b>: {e.n} classificados{e.avulsa ? ', avulsa (vale metade)' : ''} ({e.criterio}).</p>)}
+          {r.eventos.map((e) => <p key={e.slug}><b className="text-tx">{dataBR(e.data)} · {curto(e.titulo)}</b>: {e.n} classificados ({e.criterio}).</p>)}
         </div>
       )}
     </Casca>

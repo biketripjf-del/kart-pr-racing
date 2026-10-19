@@ -179,22 +179,19 @@ test('histórico: na copa, a FINAL ordena o topo e o resto segue a soma das bate
   assert.equal(numerosDoPiloto([copa({ ...sess, FINAL: homolog(linhas(finalistas)) })], 'id:300').titulos, 0, 'Y1 venceu as baterias, mas não a final');
 });
 
-test('ranking F1 (19/10): 25-18-15-12-10-8-6-4-2-1, 11º em diante 1; avulsa vale metade; falta = 0; mais pontos vence', () => {
+test('ranking F1 (19/10): 25-18-15-12-10-8-6-4-2-1, 11º em diante 1; todas as corridas do ano valem igual; falta = 0; mais pontos vence', () => {
   assert.deepEqual([1, 2, 3, 10, 11, 28].map((p) => pontosDaPosicao(p)), [25, 18, 15, 1, 1, 1]);
-  assert.equal(pontosDaPosicao(1, 0.5), 12.5);
-  assert.equal(pontosDaPosicao(15, 0.5), 0.5, 'avulsa: do 11º em diante leva 0,5');
-  const e1 = ev17([C1, C2, C3, C4]); // avulsa (sem copa): P2 1º, P1 2º, P3/P4
+  const e1 = ev17([C1, C2, C3, C4]); // corrida do ano sem marca de Copa: P2 1º, P1 2º, P3/P4 — vale o mesmo que a Copa
   const e2 = { slug: 'e2', estado: { titulo: 'E2', data: '2026-10-23', formato: 'corridas', copa: true, corridas_previstas: 1, pilotos: [{ nome: 'P1', piloto_id: 1 }, { nome: 'Novo', piloto_id: 9 }], corridas: [{ codigo: 'X', nome: 'X', linhas: linhas(['Novo', 'P1']) }] } };
   const teste = { slug: 't', estado: { ...e2.estado, teste: true, titulo: 'T' } };
   const r = rankingCampeonato([e2, teste, e1]);
   assert.deepEqual(r.eventos.map((e) => e.slug), ['corridas-17-07', 'e2'], 'em ordem de data, sem o teste');
-  assert.deepEqual(r.eventos.map((e) => e.avulsa), [true, false]);
   const de = (id) => r.tabela.find((l) => l.piloto_id === id);
-  assert.equal(de(1).total, 9 + 18, 'P1: 2º na avulsa (18 ÷ 2) + 2º na Copa');
-  assert.equal(de(9).total, 0 + 25, 'Novo faltou à avulsa (0, sem punição) + venceu a Copa');
-  assert.equal(de(2).total, 12.5, 'P2 venceu a avulsa (25 ÷ 2) e faltou à Copa (0)');
-  assert.deepEqual(r.tabela.slice(0, 3).map((l) => l.piloto_id), [1, 9, 2], 'mais pontos na frente');
-  assert.deepEqual(de(2).colunas.map((c) => c.pontos), [12.5, 0]);
+  assert.equal(de(1).total, 18 + 18, 'P1: 2º em 17/07 + 2º no E2 (sem peso menor pra corrida fora da Copa)');
+  assert.equal(de(9).total, 0 + 25, 'Novo faltou a 17/07 (0, sem punição) + venceu o E2');
+  assert.equal(de(2).total, 25, 'P2 venceu 17/07 (25, inteiro) e faltou ao E2 (0)');
+  assert.deepEqual(r.tabela.slice(0, 3).map((l) => l.piloto_id), [1, 2, 9], 'mais pontos na frente; P2 e Novo empatam em 25 e ambos venceram um evento → melhor volta');
+  assert.deepEqual(de(2).colunas.map((c) => c.pontos), [25, 0]);
   // empate em pontos: desempata a melhor colocação
   const a = { slug: 'a', estado: { titulo: 'A', data: '2026-01-01', formato: 'corridas', copa: true, corridas_previstas: 1, pilotos: [{ nome: 'P1', piloto_id: 1 }, { nome: 'P2', piloto_id: 2 }], corridas: [{ codigo: 'X', nome: 'X', linhas: linhas(['P1', 'P2']) }] } };
   const bb = { slug: 'b', estado: { ...a.estado, data: '2026-02-01', corridas: [{ codigo: 'X', nome: 'X', linhas: linhas(['P2', 'P1']) }] } };
@@ -242,19 +239,6 @@ test('desempate do ranking (19/10): pontos → colocações como na F1 (melhor, 
   assert.deepEqual(t.slice(10).map((l) => l.piloto), ['P13', 'P11', 'P12', 'P15', 'P16', 'P14'],
     'P13 [11º,13º] > P11 [11º,15º] > P12 [12º,13º] > P15 [12º,15º] > P16 = P14 [14º,16º] → melhor volta: P16 48.300 < P14 48.500 (no alfabético P14 viria antes)');
   assert.deepEqual(t.map((l) => l.pos), ids, 'do primeiro ao último, sem posição repetida');
-  // um resultado a mais, empatado no resto: A 11º na Copa (1 pt) × B 11º e 20º em duas avulsas (0,5 + 0,5) → B na frente
-  const vinte = Array.from({ length: 20 }, (_, i) => i + 1);
-  const ev20 = (slug, data, ordem, copa) => ({ slug, estado: { titulo: slug, data, formato: 'corridas', copa, corridas_previstas: 1,
-    pilotos: vinte.map((n) => ({ nome: P(n), piloto_id: n })), corridas: [{ codigo: 'X', nome: 'X', linhas: linhas(ordem.map(P)) }] } });
-  const semA = vinte.filter((n) => n !== 11);
-  const copaA = ev20('c', '2026-03-01', [...semA.slice(0, 10), 11, ...semA.slice(10)].filter((n) => n !== 12), true);  // A=P11 em 11º, B=P12 não corre
-  const v1 = ev20('v1', '2026-01-01', [...vinte.filter((n) => n !== 12 && n !== 11).slice(0, 10), 12], false);        // B 11º, A não corre
-  const v2 = ev20('v2', '2026-02-01', [...vinte.filter((n) => n !== 12 && n !== 11), 12], false);                     // B 19º (último), A não corre
-  const r2 = rankingCampeonato([copaA, v1, v2]).tabela;
-  const A = r2.find((l) => l.piloto_id === 11); const B = r2.find((l) => l.piloto_id === 12);
-  assert.equal(A.total, B.total, `empate em pontos (${A.total} × ${B.total})`);
-  assert.equal(A.colocacoes[0], B.colocacoes[0], 'mesma melhor colocação');
-  assert.ok(B.pos < A.pos, `B, com um resultado a mais, fica na frente (B ${B.pos}º, A ${A.pos}º)`);
 });
 
 test('títulos: edição da Copa no formato corridas dá título ao 1º; corridas avulsas (17/07) não', () => {
