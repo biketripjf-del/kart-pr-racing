@@ -14,3 +14,12 @@ eq(M.peso('82.5'), '82,5'); eq(M.peso('82,55'), '82,5'); eq(M.peso('1000'), '100
 eq(M.altura('1,75'), '175'); eq(M.altura('1755'), '175');
 eq(M.instagram('@Brunner.Vieira '), 'brunner.vieira'); eq(M.instagram('https://www.instagram.com/edrive_jf/?hl=pt'), 'edrive_jf');
 console.log('mascaras: 24 ok');
+// link pessoal colado no app instalado (19/10): link sozinho, mensagem inteira do WhatsApp, só o código, lixo
+const TK = 'Ab3_dE5-gH7jK9mN0pQr';
+eq(M.tokenDoLink(`https://kart-app-production.up.railway.app/f/${TK}`), TK);
+eq(M.tokenDoLink(`Oi! Seu link da ficha: https://kart-app-production.up.railway.app/f/${TK} \nAbra uma vez.`), TK);
+eq(M.tokenDoLink(`https://kart-app-production.up.railway.app/f/${TK}?utm=x`), TK);
+eq(M.tokenDoLink(` ${TK} `), TK);
+eq(M.tokenDoLink('https://kart-app-production.up.railway.app'), null);
+eq(M.tokenDoLink('https://kart-app-production.up.railway.app/f/curto'), null);
+eq(M.tokenDoLink(''), null);
