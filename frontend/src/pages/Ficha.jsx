@@ -27,11 +27,29 @@ export function LinkPessoal() {
 }
 
 // sem link pessoal neste celular: explica como chegar na ficha (a lista aberta de nomes saiu: ficha não é pública)
+// o token do link fica no armazenamento de QUEM abriu o link (Safari, Chrome, navegador do WhatsApp). O app instalado
+// na tela de início do iPhone tem armazenamento próprio e nasce sem ele (Emmanuel 19/10: "minha ficha" genérica depois
+// de instalar). Colar o link aqui dentro resolve sem abrir a ficha pra quem não tem o link.
+
 function SemLink() {
+  const nav = useNavigate();
+  const [texto, setTexto] = useState('');
+  function abrir(e) {
+    e.preventDefault();
+    const t = M.tokenDoLink(texto);
+    if (!t) return toast.error('Isso não parece o seu link. Ele termina em /f/ seguido de letras e números.');
+    nav(`/f/${t}`);
+  }
   return (
     <div className="card p-5 text-sm text-tx space-y-3">
       <div className="flex items-center gap-2 font-semibold text-base"><Lock size={17} className="text-brand" /> A ficha é pessoal</div>
       <p>Cada piloto recebe da organização um <b>link só dele</b>, pelo WhatsApp. Toque nele uma vez: o app abre a sua ficha e passa a reconhecer você neste celular (ficha, caronas, fotos).</p>
+      <form onSubmit={abrir} className="space-y-2">
+        <div className="font-semibold">Instalou o app e ele não te reconheceu?</div>
+        <p className="text-tx2">Copie o seu link no WhatsApp (segure o dedo em cima dele → Copiar) e cole aqui:</p>
+        <input className="input" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="https://kart-app-production.up.railway.app/f/…" autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+        <button type="submit" className="btn btn-primary w-full">Abrir minha ficha</button>
+      </form>
       <p className="text-tx2">Não recebeu ou trocou de celular? Peça o seu link ao Brunner ou ao Emmanuel.</p>
     </div>
   );

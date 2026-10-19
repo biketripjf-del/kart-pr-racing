@@ -51,3 +51,10 @@ export function altura(v) {
 // instagram: sem @, sem espaço, só o que o Instagram aceita
 export const instagram = (v) => String(v || '').trim().replace(/^@+/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
   .replace(/[/?].*$/, '').toLowerCase().replace(/[^a-z0-9._]/g, '').slice(0, 30);
+
+// link pessoal colado (inteiro, com texto em volta, ou só o código) → o código; null se não for um link pessoal
+export function tokenDoLink(texto) {
+  const t = String(texto || '').trim();
+  const m = /\/f\/([A-Za-z0-9_-]{16,64})(?![A-Za-z0-9_-])/.exec(t) || /^([A-Za-z0-9_-]{16,64})$/.exec(t);
+  return m ? m[1] : null;
+}
