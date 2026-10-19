@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Trophy, Timer, RefreshCw, Flag, AlertTriangle } from 'lucide-react';
 import { api } from '../api.js';
-import { Casca } from '../components/Marca.jsx';
+import { Casca, dataBR } from '../components/Marca.jsx';
 
 const INTERVALO_MS = 15000;
 const ROTULO = {
@@ -226,6 +226,16 @@ function Dia({ dados }) {
           </div>
         </div>
       )}
+      {dados.recorde?.anterior && (
+        <div className="card mt-4 p-4 flex items-center gap-3">
+          <Trophy className="text-[color:var(--color-gold)]" />
+          <div>
+            <div className="label mb-0">Recorde do traçado {dados.recorde.tracado}{dados.recorde.quebrado ? ' (antigo)' : ' · a bater'}</div>
+            <div className="font-semibold">{dados.recorde.anterior.piloto} · {dados.recorde.anterior.volta}
+              <span className="text-[11px] text-tx3 font-normal"> · {dataBR(dados.recorde.anterior.data)}</span></div>
+          </div>
+        </div>
+      )}
       <div className="card mt-4 p-4">
         <div className="label">Pilotos ({pilotos.length})</div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -283,6 +293,14 @@ export default function AoVivo() {
           <RefreshCw size={12} /> {horaBRT(dados.atualizado_em)}
         </button>
       </div>
+      {dados.recorde?.quebrado && (
+        <div className="mt-3 rounded-xl p-3 text-white text-center bg-[color:var(--color-brand-dark)] relative overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-1.5" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #d0312d 0 14px, #ffffff 14px 28px)' }} />
+          <div className="display text-xl mt-1">RECORDE QUEBRADO</div>
+          <div className="text-sm"><b>{dados.recorde.hoje.piloto}</b> · {dados.recorde.hoje.volta} no traçado {dados.recorde.tracado}</div>
+          <div className="text-[11px] text-white/75">o anterior era {dados.recorde.anterior.volta} ({dados.recorde.anterior.piloto}, {dataBR(dados.recorde.anterior.data)})</div>
+        </div>
+      )}
       {q.avisos.map((a) => (
         <div key={a} className="mt-3 flex items-center gap-2 text-sm text-amber-700"><AlertTriangle size={14} />{a}</div>
       ))}

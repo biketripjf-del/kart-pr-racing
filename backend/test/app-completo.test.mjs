@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { montarOrdem, fotografia, decidir, aplicarGrupos, PASSO_MS } from '../src/sorteio.js';
-import { participacoesDoEvento, classificacaoDoEvento, rankingCampeonato, numerosDoPiloto } from '../src/historico.js';
+import { participacoesDoEvento, classificacaoDoEvento, rankingCampeonato, numerosDoPiloto, rankingRitmo, recordesPorTracado, rivaisDoPiloto } from '../src/historico.js';
 
 const NOMES = Array.from({ length: 28 }, (_, i) => `Piloto ${String(i + 1).padStart(2, '0')}`);
 
@@ -116,7 +116,7 @@ test('histórico: participações saem das folhas, com o id do cadastro', () => 
   assert.deepEqual(ps[0], {
     evento: 'corridas-17-07', titulo: '17/07', data: '2026-07-17', sessao: 'C1', sessao_nome: '1ª corrida', tipo: 'corrida',
     tracado: 'invertido', hora: '15:00', n_pilotos: 2, piloto: 'P1', piloto_id: 1, chave: 'id:1', pos: 1, ausente: false,
-    kart: 1, mv_ms: 48000, voltas: 18,
+    kart: 1, mv_ms: 48000, voltas: 18, ritmo: null,
   });
 });
 
@@ -202,6 +202,76 @@ test('títulos: edição da Copa no formato corridas dá título ao 1º; corrida
   assert.equal(numerosDoPiloto([copa], 'id:1').titulos, 0, 'só o 1º leva título');
   const parcial = { slug: 'copa-x', estado: { ...copa.estado, corridas: [C1, C2] } };
   assert.equal(classificacaoDoEvento(parcial).campeao, null, 'Copa sem todas as folhas ainda não tem campeão');
+});
+
+// ---------- ritmo, recordes, rivais (GO 19/10/2026) ----------
+const evR = (slug, data, corridas, extra = {}) => ({
+  slug, estado: { titulo: slug, data, formato: 'corridas', corridas_previstas: corridas.length,
+    pilotos: [1, 2, 3, 4].map((n) => ({ nome: P(n), piloto_id: n })), corridas, ...extra },
+});
+const L = (pares) => pares.map(([n, mv], i) => ({ piloto: P(n), pos: i + 1, mv, voltas: 18 }));
+// R1 (6,5 HP): P1 48.000 · P2 48.480 (+1%) · P3 49.440 (+3%) · R2 (6,5 HP): P2 47.500 · P1 47.975 (+1%) · P4 48.450 (+2%)
+const R1 = { codigo: 'R1', nome: 'R1', tracado: '6,5 HP', linhas: L([[1, 48000], [2, 48480], [3, 49440]]) };
+const R2 = { codigo: 'R2', nome: 'R2', tracado: '6,5 HP', linhas: L([[2, 47500], [1, 47975], [4, 48450]]) };
+// R3: traçado diferente, a volta mais rápida de todas (46.000) — não pode virar recorde do 6,5 HP
+const R3 = { codigo: 'R3', nome: 'R3', tracado: 'invertido', linhas: L([[3, 46000], [1, 46460], [2, 47000]]) };
+
+test('ritmo: melhor volta ÷ melhor da corrida × 100; corrida com menos de 3 voltas não mede', () => {
+  const ps = participacoesDoEvento(evR('e', '2026-01-01', [R1]));
+  assert.deepEqual(ps.map((p) => p.ritmo), [100, 101, 103]);
+  const curto = participacoesDoEvento(evR('e', '2026-01-01', [{ ...R1, linhas: L([[1, 48000], [2, 48480]]) }]));
+  assert.ok(curto.every((p) => p.ritmo === null), '2 pilotos não dão régua');
+});
+
+test('ranking de ritmo: média de todas as corridas, menor = mais rápido', () => {
+  const r = rankingRitmo([evR('a', '2024-01-01', [R1]), evR('b', '2026-01-01', [R2])]);
+  const de = (n) => r.tabela.find((l) => l.piloto_id === n);
+  assert.equal(de(1).ritmo, 100.5, 'P1: 100 e 101');
+  assert.equal(de(2).ritmo, 100.5, 'P2: 101 e 100');
+  assert.equal(de(1).vezes_mais_rapido, 1);
+  assert.equal(de(4).ritmo, 102);
+  assert.equal(r.tabela[r.tabela.length - 1].piloto_id, 3, 'P3 (103) por último');
+  assert.equal(rankingRitmo([{ ...evR('t', '2026-01-01', [R1]), estado: { ...evR('t', '2026-01-01', [R1]).estado, teste: true } }]).tabela.length, 0, 'teste não entra');
+});
+
+test('recordes: por traçado, top 3 de pilotos diferentes; traçado diferente não se mistura', () => {
+  const rec = recordesPorTracado([evR('a', '2024-01-01', [R1, R3]), evR('b', '2026-01-01', [R2])]);
+  const hp = rec.find((x) => x.tracado === '6,5 HP');
+  assert.equal(hp.recorde.piloto, 'P2');
+  assert.equal(hp.recorde.mv_ms, 47500, 'o 46.000 do invertido não entra aqui');
+  assert.deepEqual(hp.top.map((x) => x.piloto), ['P2', 'P1', 'P4'], 'P1 aparece uma vez só (a melhor dele)');
+  assert.equal(rec.find((x) => x.tracado === 'invertido').recorde.mv_ms, 46000);
+  const caixa = recordesPorTracado([evR('a', '2024-01-01', [R1]), evR('b', '2026-01-01', [{ ...R2, tracado: '6,5 hp' }])]);
+  assert.equal(caixa.length, 1, 'maiúscula/minúscula não cria traçado novo');
+  assert.equal(caixa[0].recorde.mv_ms, 47500);
+  const semTracado = recordesPorTracado([evR('a', '2024-01-01', [{ ...R3, tracado: undefined }])]);
+  assert.equal(semTracado.length, 0, 'corrida sem traçado não vira recorde de traçado nenhum');
+  const teste = evR('t', '2026-01-01', [R3]); teste.estado.teste = true;
+  assert.equal(recordesPorTracado([teste]).length, 0, 'evento de teste não vira recorde');
+  assert.equal(recordesPorTracado([evR('a', '2024-01-01', [R1]), evR('b', '2026-01-01', [R2])], { exceto: 'b' })
+    .find((x) => x.tracado === '6,5 HP').recorde.mv_ms, 48000, 'o evento do dia não conta como recorde anterior');
+});
+
+test('rivais: quem chegou na frente nas corridas em comum; ausente não conta', () => {
+  const evs = [evR('a', '2024-01-01', [R1, R3]), evR('b', '2026-01-01', [R2])];
+  const r = rivaisDoPiloto(evs, 'id:1');
+  const vs = (n) => r.find((x) => x.piloto_id === n);
+  assert.deepEqual([vs(2).vitorias, vs(2).derrotas, vs(2).encontros], [2, 1, 3], 'P1×P2: R1 ganhou, R2 perdeu, R3 ganhou');
+  assert.deepEqual([vs(3).vitorias, vs(3).derrotas], [1, 1]);
+  assert.deepEqual([vs(4).vitorias, vs(4).derrotas], [1, 0]);
+  assert.equal(r[0].piloto_id, 2, 'quem mais cruzou com ele vem primeiro');
+  const comAusente = rivaisDoPiloto([evR('c', '2026-01-01', [{ ...R1, linhas: [...L([[1, 48000], [2, 48480], [3, 49440]]), { piloto: P(4), ausente: true }] }])], 'id:1');
+  assert.equal(comAusente.find((x) => x.piloto_id === 4), undefined);
+  // formato da 3ª Copa: quem não correu a bateria do grupo entra como ausente — e ausente não é rival vencido
+  const copa = { slug: 'c3', estado: { titulo: 'C3', data: '2026-10-23',
+    pilotos: [1, 2, 3, 4].map((k) => ({ nome: P(k), piloto_id: k, grupo: 'A' })),
+    sessoes: { B1_A: { linhas: L([[1, 48000], [2, 48480], [3, 49440]]) } } } };
+  assert.ok(participacoesDoEvento(copa).some((x) => x.piloto === P(4) && x.ausente), 'P4 entra como ausente no formato da Copa');
+  assert.equal(rivaisDoPiloto([copa], 'id:1').find((x) => x.piloto_id === 4), undefined, 'ausente não conta como rival');
+  assert.equal(rivaisDoPiloto([copa], 'id:4').length, 0, 'quem faltou não tem confronto');
+  const n = numerosDoPiloto(evs, 'id:1');
+  assert.equal(n.ritmo_medio, 100.67, 'P1: 100 · 101 · 101 (R3: 46.460 / 46.000 = 101,00)');
+  assert.deepEqual(n.ritmo_por_evento.map((e) => [e.evento, e.ritmo]), [['a', 100.5], ['b', 101]]);
 });
 
 test('números do piloto: vitórias, pódios, média e melhor volta por traçado', () => {

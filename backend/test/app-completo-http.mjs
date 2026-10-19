@@ -184,5 +184,34 @@ await http('PUT', '/api/ao-vivo/copa-teste', { titulo: 'T', teste: true, formato
 ok(!(await http('GET', '/api/historico/ranking')).json.tabela.some((l) => l.piloto === 'Fantasma'), 'evento de teste não entra no ranking');
 ok((await http('GET', '/api/config')).json.evento_atual === 'copa-3', 'config: evento atual = copa-3');
 
+// ---------- ritmo, recordes, recorde do dia (GO 19/10/2026) ----------
+// C1 com 3 pilotos: Só de julho 47.100 · Brunner 48.101 · Piloto 2 49.102 (6,5 HP)
+await http('PUT', '/api/ao-vivo/corridas-17-07/corrida/C1', { linhas: linhas(['Só de julho', 'Brunner', 'Piloto 2']) }, token);
+const rt = await http('GET', '/api/historico/ritmo');
+ok(rt.status === 200 && rt.json.tabela[0].piloto === 'Só de julho' && rt.json.tabela[0].ritmo === 100, 'ritmo: o mais rápido da corrida = 100');
+ok(rt.json.tabela.find((l) => l.piloto_id === 1)?.ritmo === 102.13, `ritmo: Brunner 48.101 / 47.100 = 102,13 (${rt.json.tabela.find((l) => l.piloto_id === 1)?.ritmo})`);
+ok(!rt.json.tabela.some((l) => l.piloto === 'Fantasma'), 'ritmo: evento de teste não entra');
+const rc = await http('GET', '/api/historico/recordes');
+const hp = rc.json.find((x) => x.tracado === '6,5 HP');
+ok(rc.status === 200 && hp?.recorde.piloto === 'Só de julho' && hp.recorde.mv_ms === 47100 && hp.top.length === 3, 'recordes: 6,5 HP = Só de julho 47.100, top 3');
+const pr = await http('GET', '/api/historico/piloto/1');
+ok(pr.json.numeros.rivais.find((x) => x.piloto === 'Só de julho')?.derrotas === 1 && pr.json.numeros.ritmo_medio === 102.13, 'piloto: rivais e ritmo médio na ficha');
+ok((await http('GET', '/api/ao-vivo/copa-3')).json.recorde === null, 'quadro sem traçado definido: sem comparação de recorde');
+ok((await http('PUT', '/api/ao-vivo/copa-3/tracado', { tracado: '6,5 HP' })).status === 401, 'traçado sem login = 401');
+// evento de VERDADE (não teste): é o caso do dia 23 — a volta de hoje não pode virar o "recorde anterior" dela mesma
+await http('PUT', '/api/ao-vivo/rec-teste', { titulo: 'R', pilotos: [{ nome: 'Rápido' }, { nome: 'Lento' }] }, token);
+const tr = await http('PUT', '/api/ao-vivo/rec-teste/tracado', { tracado: '6,5 hp' }, token);
+ok(tr.status === 200 && tr.json.tracado === '6,5 hp', 'traçado gravado');
+const r0 = (await http('GET', '/api/ao-vivo/rec-teste')).json.recorde;
+ok(r0.anterior?.mv_ms === 47100 && r0.quebrado === false && r0.hoje === null, 'recorde a bater aparece antes da 1ª volta (traçado sem diferença de maiúscula)');
+await http('PUT', '/api/ao-vivo/rec-teste/sessao/FINAL', { linhas: [{ piloto: 'Rápido', pos: 1, mv: '00:47.200' }, { piloto: 'Lento', pos: 2, mv: '00:48.000' }] }, token);
+ok((await http('GET', '/api/ao-vivo/rec-teste')).json.recorde.quebrado === false, '47.200 não bate 47.100');
+await http('PUT', '/api/ao-vivo/rec-teste/sessao/FINAL', { linhas: [{ piloto: 'Rápido', pos: 1, mv: '00:46.900' }, { piloto: 'Lento', pos: 2, mv: '00:48.000' }] }, token);
+const r1 = (await http('GET', '/api/ao-vivo/rec-teste')).json.recorde;
+ok(r1.quebrado === true && r1.hoje.piloto === 'Rápido' && r1.anterior.mv_ms === 47100, 'RECORDE QUEBRADO: 46.900 < 47.100');
+const rcDepois = (await http('GET', '/api/historico/recordes')).json;
+ok(rcDepois.filter((x) => x.tracado.toLowerCase() === '6,5 hp').length === 1 && rcDepois.find((x) => x.tracado === '6,5 HP')?.recorde.mv_ms === 46900,
+  'depois do dia, a volta nova vira o recorde — "6,5 hp" e "6,5 HP" são o mesmo traçado');
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO VERDE');
 process.exit(falhas ? 1 : 0);

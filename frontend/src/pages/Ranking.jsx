@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Trophy, ChevronRight, Info } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Trophy, ChevronRight, Info, Gauge, Timer } from 'lucide-react';
 import { api } from '../api.js';
-import { Casca, Avatar, dataBR } from '../components/Marca.jsx';
+import { Casca, Avatar, dataBR, volta, atras } from '../components/Marca.jsx';
 
 // Ranking do campeonato (Brunner 14/10: "tem que ser lista (...) tem que ter o podio. igual ao ranking do app do pedal
 // mas com estilo de corrida"). Pódio 2-1-3 em degraus com zebra de pista; o resto como torre de cronometragem.
@@ -57,7 +57,103 @@ function Linha({ l, lider, eventos }) {
     : <div>{corpo}</div>;
 }
 
+function Abas({ aba, setAba }) {
+  const itens = [['pontos', 'Pontos', Trophy], ['ritmo', 'Ritmo', Gauge], ['recordes', 'Recordes', Timer]];
+  return (
+    <div className="mb-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-white border border-[#e3e9f1]">
+      {itens.map(([k, t, I]) => (
+        <button key={k} onClick={() => setAba(k)}
+          className={`py-2 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-1.5 ${aba === k ? 'bg-[color:var(--color-brand)] text-white' : 'text-tx'}`}><I size={14} />{t}</button>
+      ))}
+    </div>
+  );
+}
+
+function Ritmo() {
+  const [r, setR] = useState(null);
+  const [regra, setRegra] = useState(false);
+  useEffect(() => { api.get('/historico/ritmo').then((x) => setR(x.data)).catch(() => setR({ tabela: [] })); }, []);
+  if (!r) return <div className="text-center text-tx2 py-10">Carregando…</div>;
+  if (!r.tabela.length) return <div className="card p-8 text-center text-tx">Ainda não há corrida com tempo pra medir ritmo.</div>;
+  return (
+    <>
+      <div className="text-xs text-tx2 mb-2">Quanto cada um fica, em média, atrás da volta mais rápida de cada corrida. Compara anos e traçados diferentes na mesma régua.</div>
+      <div className="card overflow-hidden divide-y divide-[#e3e9f1]">
+        {r.tabela.map((l) => {
+          const corpo = (
+            <div className="flex items-center gap-3 px-3 py-2.5">
+              <span className="w-8 h-8 rounded-md bg-[#eef3f9] border border-[#d5dfeb] flex items-center justify-center display text-[15px] text-brand-dark tabular-nums shrink-0">{l.pos}</span>
+              <span className="w-1 self-stretch rounded-full bg-brand shrink-0" />
+              <Avatar id={l.piloto_id} v={l.foto_v} nome={l.piloto} tam={36} />
+              <span className="flex-1 min-w-0">
+                <span className="block font-semibold truncate">{l.piloto}</span>
+                <span className="block text-[11px] text-tx2 truncate">
+                  {l.corridas} corrida{l.corridas > 1 ? 's' : ''}{l.vezes_mais_rapido ? ` · mais rápido em ${l.vezes_mais_rapido}` : ''}
+                </span>
+              </span>
+              <span className="text-right shrink-0 font-extrabold tabular-nums text-brand-dark">{atras(l.ritmo)}</span>
+              {l.piloto_id && <ChevronRight size={16} className="text-tx3 shrink-0" />}
+            </div>
+          );
+          return l.piloto_id
+            ? <Link key={l.chave} to={`/piloto/${l.piloto_id}`} className="block hover:bg-[#f3f6fa]">{corpo}</Link>
+            : <div key={l.chave}>{corpo}</div>;
+        })}
+      </div>
+      <button onClick={() => setRegra(!regra)} className="mt-3 flex items-center gap-1.5 text-xs text-tx2"><Info size={13} /> Como funciona o ritmo</button>
+      {regra && <div className="mt-2 text-[12px] text-tx2 card p-3">{r.regra} Corrida com menos de 3 tempos não entra. Quem tem poucas corridas pode subir ou cair muito com a próxima.</div>}
+    </>
+  );
+}
+
+function Recordes() {
+  const [r, setR] = useState(null);
+  useEffect(() => { api.get('/historico/recordes').then((x) => setR(x.data)).catch(() => setR([])); }, []);
+  if (!r) return <div className="text-center text-tx2 py-10">Carregando…</div>;
+  if (!r.length) return <div className="card p-8 text-center text-tx">Nenhum tempo registrado ainda.</div>;
+  return (
+    <>
+      <div className="text-xs text-tx2 mb-2">A volta mais rápida já feita em cada traçado. Volta de traçado diferente não se compara.</div>
+      {r.map((t) => (
+        <div key={t.tracado} className="card mb-3 overflow-hidden">
+          <div className="px-4 pt-3 pb-3 bg-[color:var(--color-brand-dark)] text-white relative">
+            <div className="absolute top-0 inset-x-0 h-1.5" style={ZEBRA} />
+            <div className="text-[11px] uppercase tracking-wide text-white/70 mt-1">Traçado {t.tracado}</div>
+            <div className="flex items-end justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-bold truncate">{t.recorde.piloto}</div>
+                <div className="text-[11px] text-white/70">{dataBR(t.recorde.data)} · {t.recorde.sessao}</div>
+              </div>
+              <div className="display text-3xl tabular-nums">{volta(t.recorde.mv_ms)}</div>
+            </div>
+          </div>
+          {t.top.slice(1).map((v, i) => (
+            <div key={v.chave} className="flex items-center justify-between px-4 py-2 text-sm border-t border-[#e3e9f1]">
+              <span className="truncate"><b className="text-tx2 mr-2">{i + 2}º</b>{v.piloto} <span className="text-[11px] text-tx3">· {dataBR(v.data)}</span></span>
+              <span className="tabular-nums font-semibold">{volta(v.mv_ms)} <span className="text-[11px] text-tx3">+{((v.mv_ms - t.recorde.mv_ms) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3 })}</span></span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
 export default function Ranking() {
+  const { state } = useLocation();
+  const [aba, setAba] = useState(state?.aba || 'pontos');
+  if (aba !== 'pontos') {
+    return (
+      <Casca sub="Ranking do campeonato">
+        <Abas aba={aba} setAba={setAba} />
+        {aba === 'ritmo' ? <Ritmo /> : <Recordes />}
+      </Casca>
+    );
+  }
+  return <Pontos aba={aba} setAba={setAba} />;
+}
+
+function Pontos({ aba, setAba }) {
   const [r, setR] = useState(null);
   const [regra, setRegra] = useState(false);
   useEffect(() => { api.get('/historico/ranking').then((x) => setR(x.data)).catch(() => setR({ eventos: [], tabela: [] })); }, []);
@@ -78,7 +174,8 @@ export default function Ranking() {
   const curto = (t) => t.replace(/\s*·.*$/, '');
   return (
     <Casca sub="Ranking do campeonato">
-      <div className="flex items-center justify-between -mt-2 mb-3 text-xs text-tx2">
+      <Abas aba={aba} setAba={setAba} />
+      <div className="flex items-center justify-between mb-3 text-xs text-tx2">
         <span>{r.eventos.length} evento{r.eventos.length > 1 ? 's' : ''} · {r.tabela.length} pilotos</span>
         {r.parcial && <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">parcial</span>}
       </div>

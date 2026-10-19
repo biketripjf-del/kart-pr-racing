@@ -3,7 +3,7 @@
 import { Router } from 'express';
 import { q } from '../db.js';
 import { ah } from '../async.js';
-import { rankingCampeonato, classificacaoDoEvento, numerosDoPiloto } from '../historico.js';
+import { rankingCampeonato, classificacaoDoEvento, numerosDoPiloto, rankingRitmo, recordesPorTracado } from '../historico.js';
 
 const router = Router();
 
@@ -28,6 +28,19 @@ router.get('/ranking', ah(async (req, res) => {
   r.tabela = r.tabela.map((l) => ({ ...l, ...(c.get(l.piloto_id) || {}) }));
   res.set('Cache-Control', 'no-store');
   res.json(r);
+}));
+
+router.get('/ritmo', ah(async (req, res) => {
+  const r = rankingRitmo(await eventos());
+  const c = await cartoes(r.tabela.map((l) => l.piloto_id));
+  r.tabela = r.tabela.map((l) => ({ ...l, ...(c.get(l.piloto_id) || {}) }));
+  res.set('Cache-Control', 'no-store');
+  res.json(r);
+}));
+
+router.get('/recordes', ah(async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(recordesPorTracado(await eventos()));
 }));
 
 router.get('/eventos', ah(async (req, res) => {
