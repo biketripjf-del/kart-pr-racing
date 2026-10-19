@@ -258,16 +258,16 @@ function Pontos({ aba, setAba }) {
       <Abas aba={aba} setAba={setAba} />
       {r.anos?.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-3">
-          {[...r.anos, 'todos'].map((a) => (
-            <button key={a} onClick={() => setAno(a)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border ${r.ano === a ? 'bg-brand-dark text-white border-transparent' : 'bg-white text-tx2 border-[#d5dfeb]'}`}>
-              {a === 'todos' ? 'Toda a história' : a}
+          {[...(r.temporadas || r.anos.map((a) => ({ ano: a }))), { ano: 'todos', nome: 'Toda a história' }].map((t) => (
+            <button key={t.ano} onClick={() => setAno(t.ano)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold border ${r.ano === t.ano ? 'bg-brand-dark text-white border-transparent' : 'bg-white text-tx2 border-[#d5dfeb]'}`}>
+              {t.ano === 'todos' ? t.nome : t.nome ? `${t.nome} · ${t.ano}` : t.ano}
             </button>
           ))}
         </div>
       )}
       <div className="flex items-center justify-between mb-3 text-xs text-tx2">
-        <span>{r.ano === 'todos' ? 'Toda a história' : `Temporada ${r.ano}`} · {r.eventos.length} evento{r.eventos.length > 1 ? 's' : ''} · {r.tabela.length} pilotos</span>
+        <span>{r.ano === 'todos' ? 'Toda a história' : r.nome ? `${r.nome} · ${r.ano}` : `Temporada ${r.ano}`} · {r.eventos.length} evento{r.eventos.length > 1 ? 's' : ''} · {r.tabela.length} pilotos</span>
         {r.parcial && <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">parcial</span>}
       </div>
 
@@ -289,7 +289,7 @@ function Pontos({ aba, setAba }) {
       {regra && (
         <div className="mt-2 text-[12px] text-tx2 space-y-1 card p-3">
           <p>{r.regra}</p>
-          <p>O ranking é por temporada: cada ano começa do zero. "Toda a história" soma todas as edições.</p>
+          <p>O ranking é por ano: cada Copa (1ª em 2020, 2ª em 2024, 3ª em 2026) começa do zero e soma as corridas daquele ano. "Toda a história" soma todas.</p>
           {r.eventos.map((e) => <p key={e.slug}><b className="text-tx">{dataBR(e.data)} · {curto(e.titulo)}</b>: {e.n} classificados{e.avulsa ? ', avulsa (vale metade)' : ''} ({e.criterio}).</p>)}
         </div>
       )}
