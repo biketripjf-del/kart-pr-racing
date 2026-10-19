@@ -43,9 +43,18 @@ router.get('/recordes', ah(async (req, res) => {
   res.json(recordesPorTracado(await eventos()));
 }));
 
+// classificação de cada edição (aba Eventos do ranking, 19/10). O nome exibido é o mesmo do ranking (o da folha mais
+// recente: "Manoel" de 2020 sai Emmanuel Pacheco); o da folha fica em nome_folha.
 router.get('/eventos', ah(async (req, res) => {
-  const lista = (await eventos()).filter((e) => !e.estado.teste).map((e) => classificacaoDoEvento(e))
-    .sort((a, b) => String(b.data).localeCompare(String(a.data)));
+  const evs = (await eventos()).filter((e) => !e.estado.teste);
+  const nomeAtual = new Map(rankingCampeonato(evs).tabela.map((l) => [l.chave, l.piloto]));
+  const lista = evs.map((e) => classificacaoDoEvento(e)).sort((a, b) => String(b.data).localeCompare(String(a.data)));
+  const c = await cartoes(lista.flatMap((ev) => ev.linhas.map((l) => l.piloto_id)));
+  for (const ev of lista) {
+    const doCampeao = ev.campeao != null ? ev.linhas.find((l) => l.piloto === ev.campeao) : null;
+    ev.linhas = ev.linhas.map((l) => ({ ...l, piloto: nomeAtual.get(l.chave) || l.piloto, nome_folha: l.piloto, ...(c.get(l.piloto_id) || {}) }));
+    if (doCampeao) ev.campeao = nomeAtual.get(doCampeao.chave) || ev.campeao;
+  }
   res.set('Cache-Control', 'no-store');
   res.json(lista);
 }));

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Trophy, ChevronRight, Info, Gauge, Timer } from 'lucide-react';
+import { Trophy, ChevronRight, Info, Gauge, Timer, Flag } from 'lucide-react';
 import { api } from '../api.js';
 import { Casca, Avatar, dataBR, volta, atras } from '../components/Marca.jsx';
 
@@ -10,7 +10,7 @@ import { Casca, Avatar, dataBR, volta, atras } from '../components/Marca.jsx';
 
 const ZEBRA = { backgroundImage: 'repeating-linear-gradient(90deg, #d0312d 0 14px, #ffffff 14px 28px)' };
 
-function Degrau({ l, pos }) {
+function Degrau({ l, pos, rotulo }) {
   const alto = { 1: 'h-28', 2: 'h-20', 3: 'h-14' }[pos];
   const tam = pos === 1 ? 76 : 60;
   const conteudo = (
@@ -20,7 +20,7 @@ function Degrau({ l, pos }) {
         <div className="rounded-full bg-white p-[2px]"><Avatar id={l.piloto_id} v={l.foto_v} nome={l.piloto} tam={tam} /></div>
       </div>
       <div className="mt-1.5 text-[13px] font-bold leading-tight text-center line-clamp-2 px-1">{l.piloto}</div>
-      <div className="text-[11px] text-tx2 tabular-nums">{l.total} pts</div>
+      <div className="text-[11px] text-tx2 tabular-nums">{rotulo ?? `${l.total} pts`}</div>
       <div className={`mt-2 w-full ${alto} rounded-t-lg bg-[color:var(--color-brand-dark)] relative overflow-hidden flex items-start justify-center`}>
         <div className="absolute top-0 inset-x-0 h-1.5" style={ZEBRA} />
         <span className="display text-white/95 mt-3 text-3xl">{pos}</span>
@@ -58,12 +58,12 @@ function Linha({ l, lider, eventos }) {
 }
 
 function Abas({ aba, setAba }) {
-  const itens = [['pontos', 'Pontos', Trophy], ['ritmo', 'Ritmo', Gauge], ['recordes', 'Recordes', Timer]];
+  const itens = [['pontos', 'Pontos', Trophy], ['eventos', 'Eventos', Flag], ['ritmo', 'Ritmo', Gauge], ['recordes', 'Recordes', Timer]];
   return (
-    <div className="mb-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-white border border-[#e3e9f1]">
+    <div className="mb-3 grid grid-cols-4 gap-1 p-1 rounded-xl bg-white border border-[#e3e9f1]">
       {itens.map(([k, t, I]) => (
         <button key={k} onClick={() => setAba(k)}
-          className={`py-2 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-1.5 ${aba === k ? 'bg-[color:var(--color-brand)] text-white' : 'text-tx'}`}><I size={14} />{t}</button>
+          className={`py-2 rounded-lg text-[12px] font-semibold flex items-center justify-center gap-1 ${aba === k ? 'bg-[color:var(--color-brand)] text-white' : 'text-tx'}`}><I size={13} />{t}</button>
       ))}
     </div>
   );
@@ -102,6 +102,83 @@ function Ritmo() {
       </div>
       <button onClick={() => setRegra(!regra)} className="mt-3 flex items-center gap-1.5 text-xs text-tx2"><Info size={13} /> Como funciona o ritmo</button>
       {regra && <div className="mt-2 text-[12px] text-tx2 card p-3">{r.regra} Corrida com menos de 3 tempos não entra. Quem tem poucas corridas pode subir ou cair muito com a próxima.</div>}
+    </>
+  );
+}
+
+// Classificação de cada edição (Brunner 19/10: "rankin por evento tbm"). Chips de evento no topo; abre na edição mais
+// recente que já correu. Na Copa 3 o pódio é o da final; nas antigas, a soma das posições.
+function Eventos() {
+  const [evs, setEvs] = useState(null);
+  const [sel, setSel] = useState(null);
+  useEffect(() => {
+    api.get('/historico/eventos').then((x) => {
+      setEvs(x.data);
+      setSel((x.data.find((e) => e.linhas.length) || x.data[0])?.slug ?? null);
+    }).catch(() => setEvs([]));
+  }, []);
+  if (!evs) return <div className="text-center text-tx2 py-10">Carregando…</div>;
+  if (!evs.length) return <div className="card p-8 text-center text-tx">Nenhum evento lançado ainda.</div>;
+  const ev = evs.find((e) => e.slug === sel) || evs[0];
+  const copa3 = ev.formato === 'copa3';
+  const maxCorridas = Math.max(0, ...ev.linhas.map((l) => l.corridas || 0));
+  const valor = (l) => (copa3 ? (l.na_final ? 'final' : `${l.baterias} pts`) : `${l.pontos} pts`);
+  const detalhe = (l) => (copa3
+    ? (l.na_final ? `finalista · ${l.baterias ?? 0} pts nas baterias` : 'não foi pra final')
+    // "N corridas" só pra quem correu menos que os outros: no celular a linha não comporta tudo
+    : [l.corridas < maxCorridas ? `${l.corridas} corrida${l.corridas > 1 ? 's' : ''}` : null, `média ${l.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}º`, l.mv_ms ? `volta ${volta(l.mv_ms)}` : null].filter(Boolean).join(' · '));
+  const top = ev.linhas.slice(0, 3);
+  return (
+    <>
+      <div className="flex gap-1.5 overflow-x-auto pb-2 mb-1 -mx-1 px-1">
+        {evs.map((e) => (
+          <button key={e.slug} onClick={(x) => { setSel(e.slug); x.currentTarget.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold border ${e.slug === ev.slug ? 'bg-[color:var(--color-brand-dark)] text-white border-transparent' : 'bg-white text-tx border-[#d5dfeb]'}`}>
+            {e.titulo?.replace(/\s*·.*$/, '') || e.slug} <span className="opacity-70">{dataBR(e.data).slice(-4)}</span>
+          </button>
+        ))}
+      </div>
+      <div className="card overflow-hidden mb-3">
+        <div className="px-4 pt-3 pb-3 bg-[color:var(--color-brand-dark)] text-white relative">
+          <div className="absolute top-0 inset-x-0 h-1.5" style={ZEBRA} />
+          <div className="text-[11px] uppercase tracking-wide text-white/70 mt-1">{dataBR(ev.data)}{ev.completa ? '' : ' · parcial'}</div>
+          <div className="font-bold">{ev.titulo}</div>
+          {ev.campeao && <div className="mt-1 text-[13px] flex items-center gap-1.5"><Trophy size={14} className="text-[color:var(--color-gold)]" /> Campeão: <b>{ev.campeao}</b></div>}
+        </div>
+      </div>
+      {!ev.linhas.length ? <div className="card p-8 text-center text-tx">Esse evento ainda não correu.</div> : (
+        <>
+          {top.length === 3 && (
+            <div className="card px-3 pt-4 pb-0 overflow-hidden">
+              <div className="flex items-end gap-2">
+                <Degrau l={top[1]} pos={2} rotulo={valor(top[1])} />
+                <Degrau l={top[0]} pos={1} rotulo={valor(top[0])} />
+                <Degrau l={top[2]} pos={3} rotulo={valor(top[2])} />
+              </div>
+            </div>
+          )}
+          <div className="card mt-3 overflow-hidden divide-y divide-[#e3e9f1]">
+            {ev.linhas.map((l) => {
+              const corpo = (
+                <div className="flex items-center gap-3 px-3 py-2.5">
+                  <span className="w-8 h-8 rounded-md bg-[#eef3f9] border border-[#d5dfeb] flex items-center justify-center display text-[15px] text-brand-dark tabular-nums shrink-0">{l.pos}</span>
+                  <Avatar id={l.piloto_id} v={l.foto_v} nome={l.piloto} tam={36} />
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-semibold truncate">{l.piloto}</span>
+                    <span className="block text-[11px] text-tx2 truncate">{detalhe(l)}</span>
+                  </span>
+                  <span className="text-right shrink-0 font-extrabold tabular-nums text-brand-dark">{valor(l)}</span>
+                  {l.piloto_id && <ChevronRight size={16} className="text-tx3 shrink-0" />}
+                </div>
+              );
+              return l.piloto_id
+                ? <Link key={l.chave} to={`/piloto/${l.piloto_id}`} className="block hover:bg-[#f3f6fa]">{corpo}</Link>
+                : <div key={l.chave}>{corpo}</div>;
+            })}
+          </div>
+          <div className="mt-3 text-[12px] text-tx2 flex gap-1.5"><Info size={13} className="shrink-0 mt-0.5" /> {ev.criterio}</div>
+        </>
+      )}
     </>
   );
 }
@@ -146,7 +223,7 @@ export default function Ranking() {
     return (
       <Casca sub="Ranking do campeonato">
         <Abas aba={aba} setAba={setAba} />
-        {aba === 'ritmo' ? <Ritmo /> : <Recordes />}
+        {aba === 'eventos' ? <Eventos /> : aba === 'ritmo' ? <Ritmo /> : <Recordes />}
       </Casca>
     );
   }

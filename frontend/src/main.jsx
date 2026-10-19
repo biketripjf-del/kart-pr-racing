@@ -27,8 +27,13 @@ import { registerSW } from 'virtual:pwa-register';
 
 // Versão nova no ar = o app troca sozinho (recarrega quando o service worker novo assume). Sem isso a aba aberta antes
 // do deploy segue com o código velho: foi o "não salva" da ficha do Brunner em 19/10, com o conserto já no ar.
-// E confere a cada 30 min, pra quem deixa o app aberto (dia da corrida).
-registerSW({ immediate: true, onRegisteredSW(_, r) { if (r) setInterval(() => r.update(), 30 * 60 * 1000); } });
+// E confere a cada 30 min, pra quem deixa o app aberto (dia da corrida), e toda vez que o app volta pra frente da tela:
+// o PWA no celular quase nunca é fechado de verdade, só vai pro fundo (Brunner 19/10: "reset em todos sem que eles façam").
+registerSW({ immediate: true, onRegisteredSW(_, r) {
+  if (!r) return;
+  setInterval(() => r.update(), 30 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') r.update(); });
+} });
 
 function Protegido({ children }) {
   return getToken() ? children : <Navigate to="/admin/login" replace />;

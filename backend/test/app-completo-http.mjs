@@ -213,5 +213,23 @@ const rcDepois = (await http('GET', '/api/historico/recordes')).json;
 ok(rcDepois.filter((x) => x.tracado.toLowerCase() === '6,5 hp').length === 1 && rcDepois.find((x) => x.tracado === '6,5 HP')?.recorde.mv_ms === 46900,
   'depois do dia, a volta nova vira o recorde — "6,5 hp" e "6,5 HP" são o mesmo traçado');
 
+
+// ---------- ranking por evento (19/10/2026) ----------
+// edição antiga com o mesmo piloto com outro nome na folha (o "Manoel" de 2020 = Emmanuel): a aba Eventos mostra o nome atual
+await http('PUT', '/api/ao-vivo/copa-velha', {
+  titulo: 'Copa velha', data: '2020-01-10', formato: 'corridas', copa: true, corridas_previstas: 1,
+  pilotos: [{ nome: 'P2 de 2020', piloto_id: idP2 }, { nome: 'Brunner', piloto_id: 1 }],
+  corridas: [{ codigo: 'C1', nome: '1ª corrida', tracado: '6,5 HP', linhas: linhas(['P2 de 2020', 'Brunner']) }],
+}, token);
+const evH = await http('GET', '/api/historico/eventos');
+const velha = evH.json.find((e) => e.slug === 'copa-velha');
+const nomeP2 = rk.json.tabela.find((l) => l.piloto_id === idP2).piloto;
+const ordem = evH.json.map((e) => e.slug).filter((x) => ['copa-3', 'corridas-17-07', 'copa-velha', 'copa-teste'].includes(x));
+ok(evH.status === 200 && ordem.join(',') === 'copa-3,corridas-17-07,copa-velha', `eventos: mais recente primeiro, sem o de teste (${ordem})`);
+ok(velha.linhas[0].piloto_id === idP2 && velha.linhas[0].piloto === nomeP2 && velha.linhas[0].nome_folha === 'P2 de 2020',
+  `evento antigo mostra o nome ATUAL (${velha.linhas[0].piloto}), não o da folha`);
+ok(velha.campeao === nomeP2 && velha.linhas[0].foto_v, 'campeão da edição com o nome atual e a foto');
+ok(evH.json.find((e) => e.slug === 'copa-3').linhas.length === 0, 'copa-3 aparece, ainda sem classificação');
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTUDO VERDE');
 process.exit(falhas ? 1 : 0);
