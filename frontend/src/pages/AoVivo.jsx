@@ -108,7 +108,7 @@ function Corrida({ s }) {
   );
 }
 
-const pts = (b) => (b ? (b.ausente ? <span className="text-red-600">14</span> : b.pontos) : '—');
+const pts = (b) => (b ? (b.ausente ? <span className="text-red-600">0</span> : b.pontos) : '—');
 
 // b1/b2 = a 1ª e a 2ª bateria DO PILOTO (cada bloco corre uma bateria em cada rodada)
 function Placar({ tabela, corte, titulo, nota, comGrupo }) {
@@ -123,7 +123,7 @@ function Placar({ tabela, corte, titulo, nota, comGrupo }) {
     <div className="card mt-4">
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <div className="font-semibold">{titulo}</div>
-        <span className="text-[11px] text-tx2">menor soma vence</span>
+        <span className="text-[11px] text-tx2">maior soma vence</span>
       </div>
       <Tabela
         cab={['#', 'Piloto', ...(comGrupo ? ['Bl'] : []), '1ª', '2ª', 'Total', 'Melhor volta']}
@@ -146,7 +146,7 @@ function Baterias({ q }) {
     <>
       <div className="card mt-4 p-4 text-[12px] text-tx2">
         4 blocos de 7. Cada bateria junta 2 blocos, e cada piloto corre 2 baterias contra 20 rivais diferentes.
-        Pontos = posição (1º = 1 ponto); perdeu a bateria = 14.
+        Pontos como na F1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · do 10º ao 14º 1; perdeu a bateria = 0.
       </div>
       {baterias.map((s) => <Corrida key={s.codigo} s={s} />)}
     </>

@@ -57,7 +57,7 @@ function imprimir(d, foco) {
   }
   const t = q.geral.tabela.filter((l) => l.correu);
   if (t.length) {
-    console.log(`\nClassificação geral — menor soma vence (${q.geral.definido ? 'definida' : 'parcial'}):`);
+    console.log(`\nClassificação geral — maior soma vence (pts F1) (${q.geral.definido ? 'definida' : 'parcial'}):`);
     t.forEach((l) => console.log(`  ${String(l.pos).padStart(2)} ${l.vai_pra_final ? '→' : ' '} ${l.piloto.padEnd(22)} [${l.grupo}] ${String(l.total).padStart(2)} pts  mv ${msParaVolta(l.mv_baterias_ms) ?? '—'}${l.empate_sorteio ? '  EMPATE' : ''}`));
   }
   if (q.final.grid.length) console.log(`\nGrid da final${q.final.grid_pela_tomada ? ' (tomada de tempo)' : ' (provisório: ordem dos pontos até a tomada)'}: ${q.final.grid.map((l) => `${l.largada}º ${l.piloto}`).join(' · ')}`);
