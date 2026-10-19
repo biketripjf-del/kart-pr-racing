@@ -41,9 +41,9 @@ function Linha({ l, lider, eventos }) {
       <Avatar id={l.piloto_id} v={l.foto_v} nome={l.piloto} tam={36} />
       <span className="flex-1 min-w-0">
         <span className="block font-semibold truncate">{l.piloto}</span>
-        <span className="block text-[11px] text-tx2 truncate">
+        <span className="block text-[11px] text-tx2 leading-snug">
           {l.colunas.map((c, i) => (
-            <span key={c.evento}>{i ? ' · ' : ''}<span className={c.descartado ? 'line-through text-tx3' : ''} title={c.descartado ? 'descarte' : undefined}>{dataBR(eventos[i]?.data).slice(0, 5)}: {c.posicoes?.length ? `${c.posicoes.map((x) => `${x}º`).join('+')} (${pts(c.pontos)})` : c.pos != null ? `${c.pos}º (${pts(c.pontos)})` : 'não correu'}</span></span>
+            <span key={c.evento}>{i ? ' · ' : ''}<span style={{ whiteSpace: 'nowrap' }} className={c.descartado ? 'line-through text-tx3' : ''} title={c.descartado ? 'descarte' : undefined}>{dataBR(eventos[i]?.data).slice(0, 5)}: {c.posicoes?.length ? `${c.posicoes.map((x) => `${x}º`).join('+')} (${pts(c.pontos)})` : c.pos != null ? `${c.pos}º (${pts(c.pontos)})` : 'não correu'}</span></span>
           ))}
         </span>
       </span>
