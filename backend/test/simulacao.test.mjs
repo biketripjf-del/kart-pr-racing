@@ -106,3 +106,17 @@ test('ranking "com descarte" (prévia, 19/10 19:00): a próxima etapa entra como
   // prévia de outro ano não mexe
   assert.equal(rankingCampeonato(evs(), { previa: { slug: 'x', data: '2027-01-01' } }).descarte.ativo, false);
 });
+
+test('simular: ajustes na MESMA bateria não se empurram (bug 19/10: 3º pedido saía 2º)', () => {
+  const c = copa();
+  c.estado.pilotos.forEach((p, i) => { p.grupo = 'WXYZ'[Math.floor(i / 7)]; });
+  // P1..P7 = bloco W, P8..P14 = bloco X: a 1ª bateria de todos eles é a B1 (W+X). Sem ritmo, a projeção é alfabética:
+  // P1, P10, P11, P12, P13, P14, P2… → P1 vem na frente; mandá-lo pro 14º não pode puxar o P5 pedido em 3º
+  const s = simular(evs(c), { P5: { b1: 3 }, P1: { b1: 14 }, P9: { b1: 3 } });
+  const pos = (n) => s.dia.find((d) => d.piloto === n).b1;
+  assert.equal(pos('P5'), 3);
+  assert.equal(pos('P1'), 14);
+  assert.equal(pos('P9'), 4, 'dois pedidos no 3º: o 2º fica com a próxima livre');
+  const b1 = s.dia.filter((d) => d.grupo === 'W' || d.grupo === 'X').map((d) => d.b1).sort((a, b) => a - b);
+  assert.deepEqual(b1, Array.from({ length: 14 }, (_, i) => i + 1), 'a bateria continua com 1º a 14º, sem buraco nem repetição');
+});
