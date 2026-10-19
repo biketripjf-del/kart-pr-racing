@@ -190,7 +190,7 @@ function Recordes() {
   if (!r.length) return <div className="card p-8 text-center text-tx">Nenhum tempo registrado ainda.</div>;
   return (
     <>
-      <div className="text-xs text-tx2 mb-2">A volta mais rápida já feita em cada traçado. Volta de traçado diferente não se compara.</div>
+      <div className="text-xs text-tx2 mb-2">A volta mais rápida já feita em cada traçado e, abaixo, a melhor de cada piloto. Volta de traçado diferente não se compara.</div>
       {r.map((t) => (
         <div key={t.tracado} className="card mb-3 overflow-hidden">
           <div className="px-4 pt-3 pb-3 bg-[color:var(--color-brand-dark)] text-white relative">
@@ -204,7 +204,7 @@ function Recordes() {
               <div className="display text-3xl tabular-nums">{volta(t.recorde.mv_ms)}</div>
             </div>
           </div>
-          {t.top.slice(1).map((v, i) => (
+          {(t.todos || t.top).slice(1).map((v, i) => (
             <div key={v.chave} className="flex items-center justify-between px-4 py-2 text-sm border-t border-[#e3e9f1]">
               <span className="truncate"><b className="text-tx2 mr-2">{i + 2}º</b>{v.piloto} <span className="text-[11px] text-tx3">· {dataBR(v.data)}</span></span>
               <span className="tabular-nums font-semibold">{volta(v.mv_ms)} <span className="text-[11px] text-tx3">+{((v.mv_ms - t.recorde.mv_ms) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3 })}</span></span>

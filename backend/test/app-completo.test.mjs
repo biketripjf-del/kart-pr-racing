@@ -267,6 +267,19 @@ test('recordes: por traçado, top 3 de pilotos diferentes; traçado diferente n�
     .find((x) => x.tracado === '6,5 HP').recorde.mv_ms, 48000, 'o evento do dia não conta como recorde anterior');
 });
 
+test('recordes: todos os pilotos do traçado (não só o top 3) e o nome da folha mais recente', () => {
+  const rec = recordesPorTracado([evR('a', '2024-01-01', [R1, R3]), evR('b', '2026-01-01', [R2])]);
+  const hp = rec.find((x) => x.tracado === '6,5 HP');
+  assert.deepEqual(hp.todos.map((x) => x.piloto), ['P2', 'P1', 'P4', 'P3'], 'o 4º (P3 49.440) também aparece, uma vez cada');
+  assert.equal(hp.top.length, 3);
+  // 2020: o piloto 1 corria como "Velho" num traçado que só existe naquele ano; hoje a folha diz P1
+  const antigo = evR('v', '2020-01-01', [{ codigo: 'V', nome: 'V', tracado: 'Indoor', linhas: [{ piloto: 'Velho', pos: 1, mv: 58000, voltas: 18 }] }]);
+  antigo.estado.pilotos = [{ nome: 'Velho', piloto_id: 1 }];
+  const indoor = recordesPorTracado([antigo, evR('b', '2026-01-01', [R2])]).find((x) => x.tracado === 'Indoor');
+  assert.equal(indoor.recorde.piloto, 'P1', 'nome atual, não o da folha de 2020');
+  assert.equal(indoor.recorde.nome_folha, 'Velho');
+});
+
 test('rivais: quem chegou na frente nas corridas em comum; ausente não conta', () => {
   const evs = [evR('a', '2024-01-01', [R1, R3]), evR('b', '2026-01-01', [R2])];
   const r = rivaisDoPiloto(evs, 'id:1');

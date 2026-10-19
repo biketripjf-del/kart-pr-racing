@@ -233,25 +233,29 @@ export function rankingRitmo(eventos) {
 }
 
 // ---------- recordes por traçado ----------
-// Volta mais rápida já registrada em cada traçado (top 3 de pilotos diferentes). Volta de traçado diferente não se compara.
+// Volta mais rápida já registrada em cada traçado: `todos` = a melhor de cada piloto (Brunner 19/10: "por que eu não
+// entro nessa página?" — com só o top 3 o resto não se acha), `top` = os 3 primeiros. Volta de traçado diferente não se compara.
+// Nome exibido = o da folha mais recente do piloto em QUALQUER traçado ("Guilherme" de 2020 sai Guilherme Teixeira).
 export function recordesPorTracado(eventos, { exceto } = {}) {
   const validos = eventos.filter((e) => !e.estado.teste && e.slug !== exceto);
+  const parts = validos.flatMap((e) => participacoesDoEvento(e));
+  const nomes = new Map();
+  for (const p of parts) if (!p.ausente) nomeRecente(nomes.get(p.chave) || nomes.set(p.chave, {}).get(p.chave), p.piloto, p.data);
   const porTracado = new Map();
-  for (const p of validos.flatMap((e) => participacoesDoEvento(e))) {
+  for (const p of parts) {
     if (p.ausente || p.mv_ms == null || !p.tracado) continue;
     // "6,5 HP" e "6,5 hp" são o mesmo traçado: agrupa pelo nome normalizado, exibe a 1ª grafia
     const k = normalizar(p.tracado);
     const g = porTracado.get(k) || { tracado: p.tracado, lista: [] };
-    g.lista.push({ piloto: p.piloto, piloto_id: p.piloto_id, chave: p.chave, mv_ms: p.mv_ms, evento: p.evento, titulo: p.titulo, data: p.data, sessao: p.sessao_nome });
+    g.lista.push({ piloto: nomes.get(p.chave)?.piloto ?? p.piloto, nome_folha: p.piloto, piloto_id: p.piloto_id, chave: p.chave, mv_ms: p.mv_ms, evento: p.evento, titulo: p.titulo, data: p.data, sessao: p.sessao_nome });
     porTracado.set(k, g);
   }
   return [...porTracado.values()].map(({ tracado, lista }) => {
     const melhores = [];
     for (const v of lista.sort((a, b) => a.mv_ms - b.mv_ms || String(a.data).localeCompare(String(b.data)))) {
       if (!melhores.some((m) => m.chave === v.chave)) melhores.push(v);
-      if (melhores.length === 3) break;
     }
-    return { tracado, recorde: melhores[0], top: melhores };
+    return { tracado, recorde: melhores[0], top: melhores.slice(0, 3), todos: melhores };
   }).sort((a, b) => a.tracado.localeCompare(b.tracado));
 }
 
