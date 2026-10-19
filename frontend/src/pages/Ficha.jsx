@@ -116,7 +116,7 @@ export function FichaForm() {
     setEnviando(true);
     const num = (v) => (v === '' ? null : Number(String(v).replace(',', '.')));
     try {
-      await api.post(`/ficha/${id}`, {
+      await api.post('/ficha/eu', {
         ...f, data_nascimento: nasc, peso_kg: num(f.peso_kg), altura_cm: num(f.altura_cm), consentimento: true,
         ...(foto ? { foto } : {}),
       });
@@ -124,6 +124,9 @@ export function FichaForm() {
       nav(`/piloto/${piloto.id}`);
     } catch (err) {
       const d = err.response?.data;
+      // sem resposta do servidor = o pedido nem saiu (rede ou erro no próprio app): "confira os campos" mandaria o
+      // piloto procurar erro no que ele digitou. Foi assim que o /ficha/${id} indefinido ficou 5 dias escondido (19/10).
+      if (!err.response) { console.error(err); return toast.error('Não consegui enviar. Confira a internet e tente de novo; se repetir, avise a organização.'); }
       toast.error(d?.erro === 'link_invalido' ? 'Seu link pessoal não vale mais. Peça um novo à organização.' : d?.detalhe || 'Não consegui salvar. Confira os campos.');
     } finally { setEnviando(false); }
   }
