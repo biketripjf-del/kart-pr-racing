@@ -21,6 +21,8 @@ test('matemática: cada um leva os dias anteriores menos o pior (o descarte liga
   const de = (n) => m.linhas.find((l) => l.piloto === n);
   assert.equal(m.descarte, true);
   assert.equal(de('Lider').leva, 25, '25 + 25, sai um dos 25');
+  assert.equal(de('Lider').hoje, 50, 'hoje (sem descarte) ele tem os dois dias');
+  assert.equal(de('Lider').sai.data, '2026-01-09');
   assert.equal(de('Lider').corre, false);
   assert.equal(de('Lider').pode_ser_campeao, false, 'não corre: não depende dele');
   assert.equal(de('P1').leva, 18, 'P1: 2º (18) e 3º (15) → sai o 15');
