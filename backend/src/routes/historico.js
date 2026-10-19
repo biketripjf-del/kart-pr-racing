@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { q } from '../db.js';
 import { ah } from '../async.js';
 import { rankingCampeonato, classificacaoDoEvento, numerosDoPiloto, rankingRitmo, recordesPorTracado } from '../historico.js';
-import { simular, matematicaDoTitulo } from '../simulacao.js';
+import { simular, matematicaDoTitulo, proximaEtapa } from '../simulacao.js';
 
 const router = Router();
 
@@ -24,8 +24,11 @@ async function cartoes(ids) {
 }
 
 // ?ano=2024 · ?ano=todos (história inteira) · sem ano = o ano mais recente
+// ?descarte=previa → como fica quando a próxima etapa entrar (descarte ligado, 0 nela pra todos)
 router.get('/ranking', ah(async (req, res) => {
-  const r = rankingCampeonato(await eventos(), { ano: req.query.ano });
+  const evs = await eventos();
+  const prox = req.query.descarte === 'previa' ? proximaEtapa(evs) : null;
+  const r = rankingCampeonato(evs, { ano: req.query.ano, previa: prox ? { slug: prox.slug, data: prox.estado.data } : undefined });
   const c = await cartoes(r.tabela.map((l) => l.piloto_id));
   r.tabela = r.tabela.map((l) => ({ ...l, ...(c.get(l.piloto_id) || {}) }));
   res.set('Cache-Control', 'no-store');

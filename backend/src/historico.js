@@ -156,7 +156,10 @@ export function punidosDoEvento({ estado }) {
   return s;
 }
 
-export function rankingCampeonato(eventos, { ano } = {}) {
+// `previa` = { slug, data } da próxima etapa (Brunner 19/10 19:00, botão "com descarte"): conta ela como mais um dia do ano
+// em que ninguém pontuou ainda — liga o descarte se esse dia completa o mínimo e protege ELE (o último do ano), em
+// vez do último já corrido. É o ranking "como fica a partir de sexta", com 0 no dia que falta.
+export function rankingCampeonato(eventos, { ano, previa } = {}) {
   const todos = eventos.filter((e) => !e.estado.teste)
     .map((e) => classificacaoDoEvento(e))
     .filter((c) => c.linhas.length)
@@ -200,8 +203,9 @@ export function rankingCampeonato(eventos, { ano } = {}) {
       if (pp.pos != null) { const k = `${e.slug}|${pp.chave}`; (posicoes.get(k) || posicoes.set(k, []).get(k)).push(pp.pos); }
     }
   }
-  const comDescarte = temporada != null && validos.length >= MIN_EVENTOS_DESCARTE;
-  const protegido = comDescarte ? validos[validos.length - 1].slug : null;
+  const comPrevia = !!(previa && temporada != null && anoDe(previa) === temporada && !validos.some((c) => c.slug === previa.slug));
+  const comDescarte = temporada != null && validos.length + (comPrevia ? 1 : 0) >= MIN_EVENTOS_DESCARTE;
+  const protegido = comDescarte ? (comPrevia ? previa.slug : validos[validos.length - 1].slug) : null;
   const punidos = new Map(eventos.filter((e) => doSlug.has(e.slug)).map((e) => [e.slug, punidosDoEvento(e)]));
   const tabela = [...pilotos.values()].map((p) => {
     let total = 0; let melhor = null; let disputados = 0;
@@ -245,6 +249,7 @@ export function rankingCampeonato(eventos, { ano } = {}) {
     temporadas: anos.map((a) => ({ ano: a, nome: nomeCopa.get(a) ?? null })),
     eventos: validos.map((c) => ({ slug: c.slug, titulo: c.titulo, data: c.data, completa: c.completa, n: c.linhas.length, criterio: c.criterio })),
     parcial: validos.some((c) => !c.completa),
+    previa: comPrevia ? { slug: previa.slug, data: previa.data } : null,
     descarte: { ativo: comDescarte, minimo_eventos: MIN_EVENTOS_DESCARTE, protegido,
       regra: temporada == null ? 'Na história inteira não há descarte: ele vale dentro de cada temporada.'
         : `1 descarte por temporada: sai o DIA em que o piloto fez menos pontos (todas as corridas daquele dia; dia em que faltou = 0). O último dia do ano e dia com punição não se descartam. Vale a partir de ${MIN_EVENTOS_DESCARTE} dias de corrida no ano${comDescarte ? '' : ` — ${validos.length} até agora`}.` },

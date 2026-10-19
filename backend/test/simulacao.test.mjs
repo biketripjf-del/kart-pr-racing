@@ -90,3 +90,19 @@ test('sem etapa pela frente (final homologada) = nada a simular', () => {
   assert.equal(simular(evs(fim), {}), null);
   assert.equal(matematicaDoTitulo(evs(fim)), null);
 });
+
+test('ranking "com descarte" (prévia, 19/10 19:00): a próxima etapa entra como dia com 0 e liga o descarte; bate com a matemática', async () => {
+  const { rankingCampeonato } = await import('../src/historico.js');
+  const prox = { slug: 'copa-3', data: '2026-10-23' };
+  const hoje = rankingCampeonato(evs());
+  const previa = rankingCampeonato(evs(), { previa: prox });
+  assert.equal(hoje.descarte.ativo, false, 'hoje são 2 dias: sem descarte');
+  assert.equal(previa.descarte.ativo, true);
+  assert.equal(previa.descarte.protegido, 'copa-3', 'o dia protegido é a próxima etapa, não o 17/07');
+  assert.deepEqual(previa.previa, prox);
+  const leva = new Map(matematicaDoTitulo(evs()).linhas.map((l) => [l.piloto, l.leva]));
+  for (const l of previa.tabela) assert.equal(l.total, leva.get(l.piloto), l.piloto);
+  assert.equal(previa.tabela.find((l) => l.piloto === 'Lider').colunas.filter((c) => c.descartado).length, 1, 'um dia riscado');
+  // prévia de outro ano não mexe
+  assert.equal(rankingCampeonato(evs(), { previa: { slug: 'x', data: '2027-01-01' } }).descarte.ativo, false);
+});
