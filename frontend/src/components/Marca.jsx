@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Home, Radio, Trophy, Users, LayoutGrid, UserRound, Shuffle, Swords, Camera, GraduationCap, Megaphone, ScrollText, Car, ChevronLeft } from 'lucide-react';
+import { Home, Radio, Trophy, Users, LayoutGrid, UserRound, Shuffle, Swords, Camera, GraduationCap, Megaphone, ScrollText, Car, ChevronLeft, Calculator } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getToken, setToken } from '../api.js';
 
@@ -53,6 +53,7 @@ export const MAIS = [
   ['/ficha', 'Minha ficha', UserRound, 'Foto, contato, peso e altura'],
   ['/caronas', 'Caronas', Car, 'Quem leva quem pra Volta Redonda'],
   ['/sorteio', 'Sorteio dos blocos', Shuffle, 'Ao vivo, pra todo mundo ao mesmo tempo'],
+  ['/simulador', 'Simulador da sexta', Calculator, 'E se você vencer? Veja onde termina a Copa'],
   ['/comparar', 'Comparar pilotos', Swords, 'Lado a lado e confronto direto'],
   ['/midia', 'Fotos e vídeos', Camera, 'Suba o que você gravou no dia'],
   ['/dicas', 'Dicas de pilotagem', GraduationCap, 'Traçado, freio, ultrapassagem'],

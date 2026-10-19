@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { q } from '../db.js';
 import { ah } from '../async.js';
 import { rankingCampeonato, classificacaoDoEvento, numerosDoPiloto, rankingRitmo, recordesPorTracado } from '../historico.js';
+import { simular, matematicaDoTitulo } from '../simulacao.js';
 
 const router = Router();
 
@@ -104,6 +105,34 @@ router.get('/piloto/:id', ah(async (req, res) => {
     ranking_historia: naHistoria ? { pos: naHistoria.pos, de: h.tabela.length, total: naHistoria.total } : null,
     numeros: numerosDoPiloto(evs, `id:${id}`),
   });
+}));
+
+// Simulador da última etapa (19/10, "1+2 go"): nada é gravado. GET = matemática do título; POST = "e se…" com os
+// ajustes { ajustes: { [nome]: { b1, b2, final } } } (posições de 1 a 14). Sem etapa pela frente = 404.
+const posicao = (v) => (v == null || v === '' ? null : Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 14 ? Number(v) : undefined);
+router.get('/titulo', ah(async (req, res) => {
+  const m = matematicaDoTitulo((await eventos()).filter((e) => !e.estado.teste));
+  if (!m) return res.status(404).json({ erro: 'sem_etapa' });
+  const c = await cartoes(m.linhas.map((l) => l.piloto_id));
+  m.linhas = m.linhas.map((l) => ({ ...l, ...(c.get(l.piloto_id) || {}) }));
+  res.set('Cache-Control', 'no-store');
+  res.json(m);
+}));
+router.post('/simular', ah(async (req, res) => {
+  const bruto = req.body?.ajustes || {};
+  if (typeof bruto !== 'object' || Array.isArray(bruto) || Object.keys(bruto).length > 28) return res.status(400).json({ erro: 'ajustes_invalidos' });
+  const ajustes = {};
+  for (const [nome, a] of Object.entries(bruto)) {
+    const v = { b1: posicao(a?.b1), b2: posicao(a?.b2), final: posicao(a?.final) };
+    if (Object.values(v).includes(undefined)) return res.status(400).json({ erro: 'posicao_invalida', piloto: nome });
+    ajustes[String(nome)] = v;
+  }
+  const s = simular((await eventos()).filter((e) => !e.estado.teste), ajustes);
+  if (!s) return res.status(404).json({ erro: 'sem_etapa' });
+  const c = await cartoes(s.ranking.tabela.map((l) => l.piloto_id));
+  s.ranking.tabela = s.ranking.tabela.map((l) => ({ ...l, ...(c.get(l.piloto_id) || {}) }));
+  res.set('Cache-Control', 'no-store');
+  res.json(s);
 }));
 
 export default router;
