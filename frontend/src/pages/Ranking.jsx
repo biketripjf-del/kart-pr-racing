@@ -110,6 +110,10 @@ function Ritmo() {
 
 // Classificação de cada edição (Brunner 19/10: "rankin por evento tbm"). Chips de evento no topo; abre na edição mais
 // recente que já correu. Na Copa 3 o pódio é o da final; nas antigas, a soma das posições.
+// botão de cada evento na aba Eventos. O Grande Prêmio é UM evento da Copa do ano, não a Copa inteira (Brunner 19/10:
+// "ta errado esse 3ª Copa aí, é Corridas de 23/10") — o título dele começa por "3ª Copa ·", que é o nome da temporada.
+const rotuloDoEvento = (e) => (e.formato === 'copa3' ? `Grande Prêmio ${dataBR(e.data).slice(0, 5)}` : e.titulo?.replace(/\s*·.*$/, '') || e.slug);
+
 function Eventos() {
   const [evs, setEvs] = useState(null);
   const [sel, setSel] = useState(null);
@@ -136,7 +140,7 @@ function Eventos() {
         {evs.map((e) => (
           <button key={e.slug} onClick={(x) => { setSel(e.slug); x.currentTarget.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }}
             className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold border ${e.slug === ev.slug ? 'bg-[color:var(--color-brand-dark)] text-white border-transparent' : 'bg-white text-tx border-[#d5dfeb]'}`}>
-            {e.titulo?.replace(/\s*·.*$/, '') || e.slug} <span className="opacity-70">{dataBR(e.data).slice(-4)}</span>
+            {rotuloDoEvento(e)} <span className="opacity-70">{dataBR(e.data).slice(-4)}</span>
           </button>
         ))}
       </div>
