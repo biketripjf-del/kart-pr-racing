@@ -171,6 +171,13 @@ export function rankingCampeonato(eventos, { ano } = {}) {
       if (l.piloto_id != null) p.piloto_id = l.piloto_id;
     }
   }
+  // melhor volta de cada piloto na temporada (3º critério de desempate)
+  const doSlug = new Set(validos.map((c) => c.slug));
+  const melhorVolta = new Map();
+  for (const e of eventos) {
+    if (e.estado.teste || !doSlug.has(e.slug)) continue;
+    for (const pp of participacoesDoEvento(e)) if (!pp.ausente && pp.mv_ms != null) melhorVolta.set(pp.chave, menor(melhorVolta.get(pp.chave) ?? null, pp.mv_ms));
+  }
   const tabela = [...pilotos.values()].map((p) => {
     let total = 0; let melhor = null; let disputados = 0;
     const colunas = validos.map((c) => {
@@ -180,17 +187,31 @@ export function rankingCampeonato(eventos, { ano } = {}) {
       disputados++; melhor = menor(melhor, pos); total += pontos;
       return { evento: c.slug, pos, pontos };
     });
-    return { piloto: p.piloto, piloto_id: p.piloto_id, chave: p.chave, total, melhor_colocacao: melhor, eventos_disputados: disputados, colunas };
+    const colocacoes = colunas.filter((c) => c.pos != null).map((c) => c.pos).sort((x, y) => x - y);
+    return { piloto: p.piloto, piloto_id: p.piloto_id, chave: p.chave, total, melhor_colocacao: melhor, eventos_disputados: disputados,
+      colocacoes, melhor_volta_ms: melhorVolta.get(p.chave) ?? null, colunas };
   });
-  tabela.sort((a, b) => b.total - a.total || a.melhor_colocacao - b.melhor_colocacao
-    || b.eventos_disputados - a.eventos_disputados || a.piloto.localeCompare(b.piloto));
+  // Desempate (Brunner 19/10: "precisamos ter um ranking ... saber do primeiro ao último"): ordem alfabética não é
+  // critério esportivo. 1) mais pontos; 2) contagem de colocações como na F1 — melhor resultado; se igual, o 2º melhor,
+  // e assim por diante (quem tem um resultado a mais, empatado no resto, fica na frente); 3) melhor volta da temporada;
+  // 4) só então o nome.
+  const porColocacoes = (a, b) => {
+    for (let i = 0; i < Math.max(a.colocacoes.length, b.colocacoes.length); i++) {
+      const d = (a.colocacoes[i] ?? Infinity) - (b.colocacoes[i] ?? Infinity);
+      if (d) return d;
+    }
+    return 0;
+  };
+  tabela.sort((a, b) => b.total - a.total || porColocacoes(a, b)
+    || (a.melhor_volta_ms ?? Infinity) - (b.melhor_volta_ms ?? Infinity) || a.piloto.localeCompare(b.piloto));
   tabela.forEach((l, i) => { l.pos = i + 1; });
   return {
     ano: temporada ?? 'todos', anos, nome: temporada ? nomeCopa.get(temporada) ?? null : null,
     temporadas: anos.map((a) => ({ ano: a, nome: nomeCopa.get(a) ?? null })),
     eventos: validos.map((c) => ({ slug: c.slug, titulo: c.titulo, data: c.data, completa: c.completa, n: c.linhas.length, criterio: c.criterio, avulsa: c.avulsa })),
     parcial: validos.some((c) => !c.completa),
-    regra: 'Pontos como na Fórmula 1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · 10º 1 · do 11º em diante 1. Corrida avulsa (fora da Copa) vale metade. Quem não correu leva 0. Mais pontos vence; empate: melhor colocação.',
+    regra: 'Pontos como na Fórmula 1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · 10º 1 · do 11º em diante 1. Corrida avulsa (fora da Copa) vale metade. Quem não correu leva 0. Mais pontos vence.',
+    desempate: ['Melhor colocação num evento; se igual, a 2ª melhor, e assim por diante (quem tem um resultado a mais fica na frente)', 'Melhor volta na temporada', 'Ordem alfabética (só se tudo acima empatar)'],
     tabela,
   };
 }

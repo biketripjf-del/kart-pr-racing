@@ -289,6 +289,7 @@ function Pontos({ aba, setAba }) {
       {regra && (
         <div className="mt-2 text-[12px] text-tx2 space-y-1 card p-3">
           <p>{r.regra}</p>
+          {r.desempate && <p><b className="text-tx">Empate em pontos:</b> {r.desempate.map((d, i) => `${i + 1}) ${d}`).join(' · ')}.</p>}
           <p>O ranking é por ano: cada Copa (1ª em 2020, 2ª em 2024, 3ª em 2026) começa do zero e soma as corridas daquele ano. "Toda a história" soma todas.</p>
           {r.eventos.map((e) => <p key={e.slug}><b className="text-tx">{dataBR(e.data)} · {curto(e.titulo)}</b>: {e.n} classificados{e.avulsa ? ', avulsa (vale metade)' : ''} ({e.criterio}).</p>)}
         </div>

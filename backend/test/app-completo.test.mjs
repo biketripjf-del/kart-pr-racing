@@ -230,6 +230,20 @@ test('ranking por temporada (19/10): padrão = o ano mais recente; ?ano=2024 só
   assert.equal(rankingCampeonato([avulsa]).nome, null, 'ano sem Copa: sem nome');
 });
 
+test('desempate do ranking (19/10): pontos → colocações como na F1 (melhor, 2ª melhor…) → melhor volta → nome; nunca para no 10º', () => {
+  const ids = Array.from({ length: 16 }, (_, i) => i + 1);
+  const ev = (slug, data, ordem, base) => ({ slug, estado: { titulo: slug, data, formato: 'corridas', copa: true, corridas_previstas: 1,
+    pilotos: ids.map((n) => ({ nome: P(n), piloto_id: n })), corridas: [{ codigo: 'X', nome: 'X', linhas: linhas(ordem.map(P), base) }] } });
+  // do 11º em diante todo mundo leva 1 ponto: P11..P16 fecham empatados em 2
+  const e1 = ev('e1', '2026-01-01', ids, 48000);                                           // 11º P11 · 12º P12 · 13º P13 · 14º P14 · 15º P15 · 16º P16
+  const e2 = ev('e2', '2026-02-01', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 15, 12, 16, 11, 14], 47000);
+  const t = rankingCampeonato([e1, e2]).tabela;
+  assert.ok(t.slice(10).every((l) => l.total === 2), 'os 6 empatados em 2 pontos');
+  assert.deepEqual(t.slice(10).map((l) => l.piloto), ['P13', 'P11', 'P12', 'P15', 'P16', 'P14'],
+    'P13 [11º,13º] > P11 [11º,15º] > P12 [12º,13º] > P15 [12º,15º] > P16 = P14 [14º,16º] → melhor volta: P16 48.300 < P14 48.500 (no alfabético P14 viria antes)');
+  assert.deepEqual(t.map((l) => l.pos), ids, 'do primeiro ao último, sem posição repetida');
+});
+
 test('títulos: edição da Copa no formato corridas dá título ao 1º; corridas avulsas (17/07) não', () => {
   const avulso = ev17([C1, C2, C3, C4]);
   assert.equal(classificacaoDoEvento(avulso).campeao, null, '17/07 não foi Copa');
