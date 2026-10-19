@@ -144,6 +144,19 @@ export const pontosDaPosicao = (pos) => PONTOS_F1[pos - 1] ?? PONTOS_DO_11_EM_DI
 // recente com corrida lançada. O NOME exibido vem de todos os anos ("Manoel" de 2020 segue saindo Emmanuel Pacheco).
 export const anoDe = (c) => String(c.data || '').slice(0, 4);
 
+// Descarte (Brunner 19/10/2026: "1 descarte por ano (...) descarta falta ou o pior resultado"; travas aprovadas: a última
+// corrida do ano e resultado com punição não se descartam; ano com só 2 corridas não tem descarte). Na temporada com
+// MIN_EVENTOS_DESCARTE eventos ou mais, cada piloto tira o evento em que fez MENOS pontos — falta (0) incluída. O evento
+// mais recente da temporada é o que fecha o ano: fica protegido. Visão "todos os anos" não descarta.
+export const MIN_EVENTOS_DESCARTE = 3;
+export function punidosDoEvento({ estado }) {
+  const pil = indicePilotos(estado);
+  const s = new Set();
+  const folhas = [...(estado.corridas || []).map((c) => c.linhas), ...Object.values(estado.sessoes || {}).map((x) => x.linhas)];
+  for (const ls of folhas) for (const l of ls || []) if (l.punicao) s.add(chaveDe(pil.get(l.piloto), l.piloto));
+  return s;
+}
+
 export function rankingCampeonato(eventos, { ano } = {}) {
   const todos = eventos.filter((e) => !e.estado.teste)
     .map((e) => classificacaoDoEvento(e))
@@ -178,6 +191,9 @@ export function rankingCampeonato(eventos, { ano } = {}) {
     if (e.estado.teste || !doSlug.has(e.slug)) continue;
     for (const pp of participacoesDoEvento(e)) if (!pp.ausente && pp.mv_ms != null) melhorVolta.set(pp.chave, menor(melhorVolta.get(pp.chave) ?? null, pp.mv_ms));
   }
+  const comDescarte = temporada != null && validos.length >= MIN_EVENTOS_DESCARTE;
+  const protegido = comDescarte ? validos[validos.length - 1].slug : null;
+  const punidos = new Map(eventos.filter((e) => doSlug.has(e.slug)).map((e) => [e.slug, punidosDoEvento(e)]));
   const tabela = [...pilotos.values()].map((p) => {
     let total = 0; let melhor = null; let disputados = 0;
     const colunas = validos.map((c) => {
@@ -187,8 +203,14 @@ export function rankingCampeonato(eventos, { ano } = {}) {
       disputados++; melhor = menor(melhor, pos); total += pontos;
       return { evento: c.slug, pos, pontos };
     });
+    let descartado = null;
+    if (comDescarte) {
+      const pode = colunas.filter((c) => c.evento !== protegido && !punidos.get(c.evento)?.has(p.chave));
+      descartado = pode.reduce((pior, c) => (pior == null || c.pontos < pior.pontos ? c : pior), null);
+      if (descartado) { descartado.descartado = true; total -= descartado.pontos; }
+    }
     const colocacoes = colunas.filter((c) => c.pos != null).map((c) => c.pos).sort((x, y) => x - y);
-    return { piloto: p.piloto, piloto_id: p.piloto_id, chave: p.chave, total, melhor_colocacao: melhor, eventos_disputados: disputados,
+    return { piloto: p.piloto, piloto_id: p.piloto_id, chave: p.chave, total, total_sem_descarte: total + (descartado?.pontos || 0), melhor_colocacao: melhor, eventos_disputados: disputados,
       colocacoes, melhor_volta_ms: melhorVolta.get(p.chave) ?? null, colunas };
   });
   // Desempate (Brunner 19/10: "precisamos ter um ranking ... saber do primeiro ao último"): ordem alfabética não é
@@ -210,6 +232,9 @@ export function rankingCampeonato(eventos, { ano } = {}) {
     temporadas: anos.map((a) => ({ ano: a, nome: nomeCopa.get(a) ?? null })),
     eventos: validos.map((c) => ({ slug: c.slug, titulo: c.titulo, data: c.data, completa: c.completa, n: c.linhas.length, criterio: c.criterio })),
     parcial: validos.some((c) => !c.completa),
+    descarte: { ativo: comDescarte, minimo_eventos: MIN_EVENTOS_DESCARTE, protegido,
+      regra: temporada == null ? 'Na história inteira não há descarte: ele vale dentro de cada temporada.'
+        : `1 descarte por temporada: sai o evento em que o piloto fez menos pontos (falta incluída). A última corrida do ano e resultado com punição não se descartam. Vale a partir de ${MIN_EVENTOS_DESCARTE} corridas no ano${comDescarte ? '' : ` — ${validos.length} até agora`}.` },
     regra: 'Pontos como na Fórmula 1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · 10º 1 · do 11º em diante 1. Todas as corridas do ano valem igual e juntas formam a Copa do ano. Quem não correu leva 0. Mais pontos vence.',
     desempate: ['Melhor colocação num evento; se igual, a 2ª melhor, e assim por diante (quem tem um resultado a mais fica na frente)', 'Melhor volta na temporada', 'Ordem alfabética (só se tudo acima empatar)'],
     tabela,

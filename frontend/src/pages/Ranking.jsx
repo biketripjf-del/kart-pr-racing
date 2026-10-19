@@ -43,7 +43,7 @@ function Linha({ l, lider, eventos }) {
         <span className="block font-semibold truncate">{l.piloto}</span>
         <span className="block text-[11px] text-tx2 truncate">
           {l.colunas.map((c, i) => (
-            <span key={c.evento}>{i ? ' · ' : ''}{dataBR(eventos[i]?.data).slice(0, 5)}: {c.pos != null ? `${c.pos}º (${pts(c.pontos)})` : 'não correu'}</span>
+            <span key={c.evento}>{i ? ' · ' : ''}<span className={c.descartado ? 'line-through text-tx3' : ''} title={c.descartado ? 'descarte' : undefined}>{dataBR(eventos[i]?.data).slice(0, 5)}: {c.pos != null ? `${c.pos}º (${pts(c.pontos)})` : 'não correu'}</span></span>
           ))}
         </span>
       </span>
@@ -294,6 +294,7 @@ function Pontos({ aba, setAba }) {
       {regra && (
         <div className="mt-2 text-[12px] text-tx2 space-y-1 card p-3">
           <p>{r.regra}</p>
+          {r.descarte && <p><b className="text-tx">Descarte:</b> {r.descarte.regra}{r.descarte.ativo ? ' O resultado descartado aparece riscado.' : ''}</p>}
           {r.desempate && <p><b className="text-tx">Empate em pontos:</b> {r.desempate.map((d, i) => `${i + 1}) ${d}`).join(' · ')}.</p>}
           <p>O ranking é por ano: cada Copa (1ª em 2020, 2ª em 2024, 3ª em 2026) começa do zero e soma as corridas daquele ano. "Toda a história" soma todas.</p>
           {r.eventos.map((e) => <p key={e.slug}><b className="text-tx">{dataBR(e.data)} · {curto(e.titulo)}</b>: {e.n} classificados ({e.criterio}).</p>)}
