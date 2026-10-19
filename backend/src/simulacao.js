@@ -101,6 +101,7 @@ export function matematicaDoTitulo(eventos) {
   const ano = anoDe(etapa.estado);
   const r = rankingCampeonato(eventos, { ano });
   const doAno = new Set(r.eventos.map((e) => e.slug));
+  const dataDe = new Map(r.eventos.map((e) => [e.slug, e.data]));
   const punidos = new Map(eventos.filter((e) => doAno.has(e.slug)).map((e) => [e.slug, punidosDoEvento(e)]));
   const vaiTerDescarte = r.eventos.filter((e) => e.slug !== etapa.slug).length + 1 >= MIN_EVENTOS_DESCARTE;
   const correm = new Set((etapa.estado.pilotos || []).map(chave).filter(Boolean));
@@ -109,11 +110,12 @@ export function matematicaDoTitulo(eventos) {
     const soma = anteriores.reduce((t, c) => t + c.pontos, 0);
     const podem = anteriores.filter((c) => !punidos.get(c.evento)?.has(l.chave));
     const sai = vaiTerDescarte && podem.length ? podem.reduce((m, c) => (c.pontos < m.pontos ? c : m)) : null;
-    return { piloto: l.piloto, piloto_id: l.piloto_id, chave: l.chave, leva: soma - (sai?.pontos ?? 0), sai: sai ? { evento: sai.evento, pontos: sai.pontos } : null, corre: correm.has(l.chave) };
+    // hoje = o que o ranking mostra agora (sem descarte, 2 dias); leva = o que sobra quando o 3º dia liga o descarte
+    return { piloto: l.piloto, piloto_id: l.piloto_id, chave: l.chave, hoje: soma, leva: soma - (sai?.pontos ?? 0), sai: sai ? { evento: sai.evento, data: dataDe.get(sai.evento) ?? null, pontos: sai.pontos } : null, corre: correm.has(l.chave) };
   });
   // quem corre sexta e ainda não pontuou no ano também entra, levando 0
   for (const p of etapa.estado.pilotos || []) {
-    if (chave(p) && !linhas.some((l) => l.chave === chave(p))) linhas.push({ piloto: p.nome, piloto_id: p.piloto_id, chave: chave(p), leva: 0, sai: null, corre: true });
+    if (chave(p) && !linhas.some((l) => l.chave === chave(p))) linhas.push({ piloto: p.nome, piloto_id: p.piloto_id, chave: chave(p), hoje: 0, leva: 0, sai: null, corre: true });
   }
   linhas.sort((a, b) => b.leva - a.leva || Number(b.corre) - Number(a.corre) || a.piloto.localeCompare(b.piloto));
   const lider = linhas[0]?.leva ?? 0;

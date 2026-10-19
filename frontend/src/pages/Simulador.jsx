@@ -53,7 +53,7 @@ function Titulo({ m }) {
         <p className="mt-1 text-[13px] text-tx">
           {lider.corre
             ? <><b>{lider.piloto}</b> chega na frente com <b>{pts(lider.leva)}</b>. Os <b>{correm.length}</b> que correm sexta ainda podem ser campeões.</>
-            : <><b>{lider.piloto}</b> lidera com <b>{pts(lider.leva)}</b>, mas não corre sexta. Quem fizer mais pontos que a diferença passa. Os <b>{correm.length}</b> que correm ainda podem ser campeões.</>}
+            : <><b>{lider.piloto}</b> tem {pts(lider.hoje)} hoje, mas não corre sexta: com o descarte, fica com <b>{pts(lider.leva)}</b>. Quem fizer mais pontos que a diferença passa. Os <b>{correm.length}</b> que correm ainda podem ser campeões.</>}
         </p>
         <p className="mt-1 text-[11px] text-tx2">{m.regra}</p>
       </div>
@@ -64,6 +64,7 @@ function Titulo({ m }) {
             <Avatar id={l.piloto_id} v={l.foto_v} nome={l.piloto} tam={28} />
             <span className="flex-1 min-w-0">
               <span className="block text-[14px] font-semibold truncate">{l.piloto}</span>
+              {l.sai?.pontos > 0 && <span className="block text-[11px] text-tx3">hoje {pts(l.hoje)} · o descarte tira {dataBR(l.sai.data).slice(0, 5)} ({pts(l.sai.pontos)})</span>}
               <span className="block text-[11px] text-tx2">{!l.corre ? 'não corre sexta' : !l.atras ? 'na frente' : lider.corre
                   ? `precisa de ${pts(l.atras + 1)} pts a mais que ${lider.piloto.split(' ')[0]} na sexta`
                   : `${pts(l.atras + 1)} pts na sexta passam ${lider.piloto.split(' ')[0]}`}</span>
