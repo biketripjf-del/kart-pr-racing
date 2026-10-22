@@ -4,6 +4,7 @@ import { exigirAdmin } from '../auth.js';
 import { ah } from '../async.js';
 import { calcularQuadro, validarSessao, normalizar, SESSOES, STATUS, msParaVolta } from '../aoVivo.js';
 import { recordesPorTracado } from '../historico.js';
+import { escalacaoDasBaterias } from '../escalacao.js';
 
 const router = Router();
 const CODIGOS = new Set(SESSOES.map((s) => s.codigo));
@@ -30,6 +31,21 @@ router.get('/:slug', ah(async (req, res) => {
     quadro: calcularQuadro(estado),
     recorde: await recordeDoDia(req.params.slug, estado),
   });
+}));
+
+// pública: quem corre cada bateria, com ritmo, pontos da Copa, duelos e força da bateria (só leitura, 22/10)
+router.get('/:slug/escalacao', ah(async (req, res) => {
+  const { rows } = await q('SELECT slug, estado FROM ao_vivo');
+  const e = escalacaoDasBaterias(rows, req.params.slug);
+  if (!e) return res.status(404).json({ erro: 'evento_nao_encontrado' });
+  const ids = [...new Set(e.baterias.flatMap((b) => b.pilotos.map((p) => p.piloto_id)).filter((x) => x != null))];
+  if (ids.length) {
+    const { rows: fotos } = await q(`SELECT id, foto_em, (foto IS NOT NULL) AS tem_foto FROM pilotos WHERE id = ANY($1::int[])`, [ids]);
+    const v = new Map(fotos.map((f) => [f.id, f.tem_foto && f.foto_em ? new Date(f.foto_em).getTime() : null]));
+    for (const b of e.baterias) for (const p of b.pilotos) p.foto_v = v.get(p.piloto_id) ?? null;
+  }
+  res.set('Cache-Control', 'no-store');
+  res.json(e);
 }));
 
 // recorde da pista no traçado do dia (dos OUTROS eventos) e se a melhor volta de hoje já o bateu.
