@@ -100,10 +100,29 @@ function Grid({ s, titulo }) {
   );
 }
 
-function Corrida({ s }) {
+// antes da tomada: quem corre a bateria, bloco a bloco (sai do sorteio)
+function Escalados({ s, blocos }) {
+  const cols = (s.blocos || []).filter((b) => blocos?.[b]?.pilotos.length);
+  if (!cols.length) return null;
+  return (
+    <div className="px-4 pb-3 grid grid-cols-2 gap-x-4 text-sm">
+      {cols.map((b) => (
+        <div key={b}>
+          <div className="label mt-1">Bloco {b}</div>
+          {[...blocos[b].pilotos].sort((x, y) => x.localeCompare(y, 'pt-BR')).map((p) => <div key={p} className="py-0.5">{p}</div>)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Corrida({ s, blocos }) {
+  const corpo = s.resultado.length ? <Resultado s={s} comPontos />
+    : s.grid?.length ? <Grid s={s} titulo="Grid de largada · tomada de tempo" />
+    : s.blocos?.length && blocos ? <Escalados s={s} blocos={blocos} /> : null;
   return (
     <CartaoSessao s={s} vazio="Grid sai da tomada de tempo (melhor volta larga em 1º).">
-      {s.resultado.length ? <Resultado s={s} comPontos /> : <Grid s={s} titulo="Grid de largada · tomada de tempo" />}
+      {corpo}
     </CartaoSessao>
   );
 }
@@ -148,7 +167,7 @@ function Baterias({ q }) {
         4 blocos de 7. Cada bateria junta 2 blocos, e cada piloto corre 2 baterias contra 20 rivais diferentes.
         Pontos como na F1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · do 10º ao 14º 1; perdeu a bateria = 0.
       </div>
-      {baterias.map((s) => <Corrida key={s.codigo} s={s} />)}
+      {baterias.map((s) => <Corrida key={s.codigo} s={s} blocos={q.blocos} />)}
     </>
   );
 }
