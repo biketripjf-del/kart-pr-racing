@@ -21,12 +21,13 @@
 
 export const BLOCOS = ['W', 'X', 'Y', 'Z'];
 // n = rodada: cada bloco aparece uma vez em cada rodada (a rodada 1 é a "B1" do piloto, a 2 é a "B2").
+// hora = grade do regulamento da 3ª Copa (23/10: 30 min por corrida); o selo "aguardando" vira o horário
 export const SESSOES = [
-  { codigo: 'B1_WX', nome: 'Bateria 1 · W + X', curto: 'Bateria 1', blocos: ['W', 'X'], tipo: 'bateria', n: 1 },
-  { codigo: 'B2_YZ', nome: 'Bateria 2 · Y + Z', curto: 'Bateria 2', blocos: ['Y', 'Z'], tipo: 'bateria', n: 1 },
-  { codigo: 'B3_WY', nome: 'Bateria 3 · W + Y', curto: 'Bateria 3', blocos: ['W', 'Y'], tipo: 'bateria', n: 2 },
-  { codigo: 'B4_XZ', nome: 'Bateria 4 · X + Z', curto: 'Bateria 4', blocos: ['X', 'Z'], tipo: 'bateria', n: 2 },
-  { codigo: 'FINAL', nome: 'GRANDE FINAL', curto: 'Final', blocos: null, tipo: 'final' },
+  { codigo: 'B1_WX', nome: 'Bateria 1 · W + X', curto: 'Bateria 1', blocos: ['W', 'X'], tipo: 'bateria', n: 1, hora: '15:00' },
+  { codigo: 'B2_YZ', nome: 'Bateria 2 · Y + Z', curto: 'Bateria 2', blocos: ['Y', 'Z'], tipo: 'bateria', n: 1, hora: '15:30' },
+  { codigo: 'B3_WY', nome: 'Bateria 3 · W + Y', curto: 'Bateria 3', blocos: ['W', 'Y'], tipo: 'bateria', n: 2, hora: '16:00' },
+  { codigo: 'B4_XZ', nome: 'Bateria 4 · X + Z', curto: 'Bateria 4', blocos: ['X', 'Z'], tipo: 'bateria', n: 2, hora: '16:30' },
+  { codigo: 'FINAL', nome: 'GRANDE FINAL', curto: 'Final', blocos: null, tipo: 'final', hora: '17:00' },
 ];
 const BATERIAS = SESSOES.filter((d) => d.tipo === 'bateria');
 // a bateria da rodada `n` em que o bloco `g` corre

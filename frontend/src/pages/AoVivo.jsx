@@ -22,7 +22,10 @@ const horaBRT = (iso) => (iso ? new Date(iso).toLocaleTimeString('pt-BR', {
   hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
 }) : '');
 
-function Selo({ status }) {
+function Selo({ status, hora }) {
+  if ((!status || status === 'aguardando') && hora) {
+    return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-tx2 tabular-nums">às {hora}</span>;
+  }
   const r = ROTULO[status] || ROTULO.aguardando;
   return <span className={`text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${r.cls}`}>{r.txt}</span>;
 }
@@ -55,7 +58,7 @@ function CartaoSessao({ s, children, vazio }) {
         <div className="font-semibold">{s.nome}</div>
         <div className="flex items-center gap-2">
           {s.atualizado_em && <span className="text-[11px] text-tx3">{horaBRT(s.atualizado_em)}</span>}
-          <Selo status={s.status} />
+          <Selo status={s.status} hora={s.hora} />
         </div>
       </div>
       {children || <div className="px-4 pb-4 text-sm text-tx2">{vazio || 'Ainda não correu.'}</div>}
@@ -169,13 +172,14 @@ function Corrida({ s, esc, recorde }) {
 const pts = (b) => (b ? (b.ausente ? <span className="text-red-600">0</span> : b.pontos) : '—');
 
 // b1/b2 = a 1ª e a 2ª bateria DO PILOTO (cada bloco corre uma bateria em cada rodada)
-function Placar({ tabela, corte, titulo, nota, comGrupo }) {
+function Placar({ tabela, corte, titulo, nota, comGrupo, previa }) {
   const linhas = tabela.map((l) => [
     l.correu ? l.pos : '—',
     <>{l.piloto}{l.cabeca && <span className="ml-1 text-[10px] text-[color:var(--color-gold)]">cabeça</span>}
       {l.empate_sorteio && <span className="ml-1 text-[10px] text-amber-700">empate</span>}</>,
     ...(comGrupo ? [l.grupo] : []),
-    pts(l.b1), pts(l.b2), <b>{l.correu ? l.total : '—'}</b>, volta(l.mv_baterias_ms),
+    pts(l.b1), pts(l.b2), <b>{l.correu ? l.total : '—'}</b>,
+    previa ? (previa.ritmo.get(l.piloto) != null ? atras(previa.ritmo.get(l.piloto), previa.ref) : 'estreante') : volta(l.mv_baterias_ms),
   ]);
   return (
     <div className="card mt-4">
@@ -184,7 +188,7 @@ function Placar({ tabela, corte, titulo, nota, comGrupo }) {
         <span className="text-[11px] text-tx2">maior soma vence</span>
       </div>
       <Tabela
-        cab={['#', 'Piloto', ...(comGrupo ? ['Bl'] : []), '1ª', '2ª', 'Total', 'Melhor volta']}
+        cab={['#', 'Piloto', ...(comGrupo ? ['Bl'] : []), '1ª', '2ª', 'Total', previa ? 'Ritmo' : 'Melhor volta']}
         linhas={linhas}
         destaque={(i) => (corte && i === corte - 1 ? 'border-b-2 border-b-[color:var(--color-gold)]' : '')
           + (tabela[i].vai_pra_final ? ' bg-[#e8eff7]' : '')}
@@ -195,9 +199,14 @@ function Placar({ tabela, corte, titulo, nota, comGrupo }) {
 }
 
 // as 4 baterias, cada uma com 2 blocos de 7 (W+X, Y+Z, W+Y, X+Z); antes da tomada, a escalação com o histórico
-function Baterias({ q, slug }) {
+function useEscalacao(slug) {
   const [esc, setEsc] = useState(null);
   useEffect(() => { api.get(`/ao-vivo/${slug}/escalacao`).then((r) => setEsc(r.data)).catch(() => setEsc(null)); }, [slug]);
+  return esc;
+}
+
+function Baterias({ q, slug }) {
+  const esc = useEscalacao(slug);
   const baterias = Object.values(q.sessoes).filter((s) => s.tipo === 'bateria');
   if (!Object.values(q.blocos).some((b) => b.pilotos.length)) {
     return <div className="card p-6 text-center text-tx mt-4">Os blocos saem do sorteio.</div>;
@@ -215,12 +224,23 @@ function Baterias({ q, slug }) {
   );
 }
 
-function Geral({ q }) {
+// antes da 1ª bateria (ninguém correu), a ordem é a do mais rápido pelo histórico (Brunner 22/10: "deixa pela ordem do mais
+// rápido até ter os resultados"); com o 1º resultado, volta a ser a classificação de verdade
+function Geral({ q, slug }) {
   const { geral } = q;
+  const esc = useEscalacao(slug);
+  const previa = !geral.tabela.some((l) => l.correu) && esc?.sorteado
+    ? { ritmo: new Map(esc.baterias.flatMap((b) => b.pilotos).filter((p) => p.ritmo != null).map((p) => [p.piloto, p.ritmo])), ref: esc.recorde?.mv_ms }
+    : null;
+  const tabela = previa
+    ? [...geral.tabela].sort((a, b) => (previa.ritmo.get(a.piloto) ?? Infinity) - (previa.ritmo.get(b.piloto) ?? Infinity) || a.piloto.localeCompare(b.piloto, 'pt-BR'))
+    : geral.tabela;
   return (
-    <Placar tabela={geral.tabela} corte={14} comGrupo
-      titulo={`Classificação geral${geral.definido ? '' : geral.parcial ? ' · parcial' : ''}`}
-      nota="Bl = bloco do sorteio. 1ª e 2ª = as 2 baterias do piloto. Linha dourada = corte: os 14 de cima correm a GRANDE FINAL. Desempate: melhor volta nas baterias." />
+    <Placar tabela={tabela} corte={previa ? null : 14} comGrupo previa={previa}
+      titulo={previa ? 'Classificação geral · antes das baterias' : `Classificação geral${geral.definido ? '' : geral.parcial ? ' · parcial' : ''}`}
+      nota={previa
+        ? 'Antes das baterias: do mais rápido ao mais lento pelo histórico (ritmo = segundos atrás do mais rápido, como na aba Baterias). Com o 1º resultado, vira a classificação de verdade. Bl = bloco do sorteio. Os 14 de cima depois das baterias correm a GRANDE FINAL.'
+        : 'Bl = bloco do sorteio. 1ª e 2ª = as 2 baterias do piloto. Linha dourada = corte: os 14 de cima correm a GRANDE FINAL. Desempate: melhor volta nas baterias.'} />
   );
 }
 
@@ -278,7 +298,7 @@ function Dia({ dados }) {
               {q.em_curso === s.codigo && <Flag size={14} className="text-[color:var(--color-gold)]" />}
               {s.nome}
             </div>
-            <Selo status={s.status} />
+            <Selo status={s.status} hora={s.hora} />
           </div>
         ))}
       </div>
@@ -377,7 +397,7 @@ export default function AoVivo() {
       </div>
       {atual === 'D' && <Dia dados={dados} />}
       {atual === 'B' && <Baterias q={q} slug={slug} />}
-      {atual === 'G' && <Geral q={q} />}
+      {atual === 'G' && <Geral q={q} slug={slug} />}
       {atual === 'F' && <Final q={q} />}
     </Casca>
   );
