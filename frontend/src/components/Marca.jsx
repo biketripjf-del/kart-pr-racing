@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Home, Radio, Trophy, Users, LayoutGrid, UserRound, Shuffle, Swords, Camera, GraduationCap, Megaphone, ScrollText, Car, ChevronLeft, Calculator } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Home, Radio, Trophy, Users, LayoutGrid, UserRound, Shuffle, Swords, Camera, GraduationCap, Megaphone, ScrollText, Car, ChevronLeft, Calculator, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getToken, setToken } from '../api.js';
 
@@ -109,13 +110,40 @@ export function Casca({ children, sub, largo }) {
   );
 }
 
-// foto do piloto (ou as iniciais, enquanto ele não mandou foto)
-export function Avatar({ id, v, nome, tam = 40, className = '' }) {
+// Foto ampliada (Brunner 22/10/2026: "nao consigo ampliar para ver a foto de outros pilotos"). Fica num portal, mas o
+// clique do React sobe pela ÁRVORE (não pelo DOM): sem preventDefault o <Link> em volta do avatar navegaria ao fechar.
+function FotoGrande({ src, nome, onFechar }) {
+  useEffect(() => {
+    const esc = (e) => { if (e.key === 'Escape') onFechar(); };
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, []);
+  const fechar = (e) => { e.preventDefault(); e.stopPropagation(); onFechar(); };
+  return createPortal(
+    <div className="fixed inset-0 z-[60] bg-black/85 flex flex-col items-center justify-center gap-3 p-6 cursor-zoom-out" onClick={fechar} role="dialog" aria-label={`Foto de ${nome}`}>
+      <img src={src} alt={nome} className="rounded-2xl object-contain shadow-2xl" style={{ width: 'min(88vw, 70vh)', height: 'min(88vw, 70vh)' }} />
+      <div className="text-white font-semibold text-lg text-center">{nome}</div>
+      <button type="button" className="absolute top-4 right-4 text-white/90 p-2" onClick={fechar} aria-label="Fechar"><X size={26} /></button>
+    </div>,
+    document.body
+  );
+}
+
+// foto do piloto (ou as iniciais, enquanto ele não mandou foto). Com foto, tocar amplia — em qualquer tela.
+export function Avatar({ id, v, nome, tam = 40, className = '', ampliar = true }) {
+  const [aberta, setAberta] = useState(false);
   const iniciais = String(nome || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
   const estilo = { width: tam, height: tam, fontSize: Math.round(tam * 0.38) };
   if (id && v) {
-    return <img src={`/api/pilotos/${id}/foto?v=${v}`} alt={nome} style={estilo} loading="lazy"
-      className={`rounded-full object-cover bg-[#e8eff7] shrink-0 ${className}`} />;
+    const src = `/api/pilotos/${id}/foto?v=${v}`;
+    const abrir = (e) => { e.preventDefault(); e.stopPropagation(); setAberta(true); };
+    return (
+      <>
+        <img src={src} alt={nome} style={estilo} loading="lazy" onClick={ampliar ? abrir : undefined}
+          className={`rounded-full object-cover bg-[#e8eff7] shrink-0 ${ampliar ? 'cursor-zoom-in' : ''} ${className}`} />
+        {aberta && <FotoGrande src={src} nome={nome} onFechar={() => setAberta(false)} />}
+      </>
+    );
   }
   return (
     <div style={estilo} className={`rounded-full bg-[#e8eff7] border border-[#d5dfeb] text-tx font-bold flex items-center justify-center shrink-0 ${className}`}>

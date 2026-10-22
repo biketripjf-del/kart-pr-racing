@@ -5,6 +5,7 @@ import { Camera, Lock } from 'lucide-react';
 import { api, getEu, setEu } from '../api.js';
 import { AdminLinks, useAdmin } from '../components/AdminApp.jsx';
 import { Casca, Avatar } from '../components/Marca.jsx';
+import AjustarFoto from '../components/AjustarFoto.jsx';
 import * as M from '../mascaras.js';
 
 // ---------- /f/:token: o link pessoal. Guarda no celular e abre a ficha ----------
@@ -55,26 +56,6 @@ function SemLink() {
   );
 }
 
-// reduz a foto no próprio celular (512 px, jpeg) — sobe ~60 KB em vez de 4 MB
-function reduzirFoto(arquivo) {
-  return new Promise((ok, falha) => {
-    const img = new Image();
-    const url = URL.createObjectURL(arquivo);
-    img.onload = () => {
-      const lado = 512;
-      const menor = Math.min(img.width, img.height);
-      const c = document.createElement('canvas');
-      c.width = lado; c.height = lado;
-      // recorte quadrado no centro
-      c.getContext('2d').drawImage(img, (img.width - menor) / 2, (img.height - menor) / 2, menor, menor, 0, 0, lado, lado);
-      URL.revokeObjectURL(url);
-      ok(c.toDataURL('image/jpeg', 0.82));
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); falha(new Error('imagem ilegível')); };
-    img.src = url;
-  });
-}
-
 const VAZIO = {
   nome: '', apelido: '', whatsapp: '', data_nascimento: '', peso_kg: '', altura_cm: '', cidade: '', instagram: '',
   emergencia_nome: '', emergencia_tel: '', tipo_sanguineo: '', camiseta: '', experiencia: '', empresa: '',
@@ -97,6 +78,7 @@ export function FichaForm() {
   const [piloto, setPiloto] = useState(getEu() ? null : false);
   const [f, setF] = useState(VAZIO);
   const [foto, setFoto] = useState(null);
+  const [ajustando, setAjustando] = useState(null); // arquivo escolhido, esperando o ajuste
   const [aceite, setAceite] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const arquivo = useRef(null);
@@ -116,10 +98,22 @@ export function FichaForm() {
 
   // mascara = função de mascaras.js aplicada a cada tecla
   const set = (k, mascara) => (e) => { const v = mascara ? mascara(e.target.value) : e.target.value; setF((x) => ({ ...x, [k]: v })); };
-  async function escolherFoto(e) {
+  // escolheu o arquivo → abre o ajuste na moldura (22/10). Quem já aceitou a ficha salva a foto na hora (rota só da
+  // foto); quem ainda não aceitou leva a foto junto com a ficha, no Salvar.
+  function escolherFoto(e) {
     const a = e.target.files?.[0];
-    if (!a) return;
-    try { setFoto(await reduzirFoto(a)); } catch { toast.error('Não consegui ler essa imagem. Tente outra.'); }
+    e.target.value = '';
+    if (a) setAjustando(a);
+  }
+  async function fotoAjustada(dataUrl) {
+    setAjustando(null);
+    setFoto(dataUrl);
+    if (!piloto.tem_ficha) return;
+    try {
+      await api.post('/ficha/eu/foto', { foto: dataUrl });
+      setPiloto((p) => ({ ...p, tem_foto: true }));
+      toast.success('Foto salva!');
+    } catch { toast.error('Não consegui salvar a foto. Ela vai junto quando você tocar em Salvar.'); }
   }
 
   async function enviar(e) {
@@ -162,6 +156,8 @@ export function FichaForm() {
             ? <img src={foto} alt="" className="w-28 h-28 rounded-full object-cover" />
             : <Avatar id={piloto.id} v={piloto.foto_v} nome={piloto.nome} tam={112} />}
           <input ref={arquivo} type="file" accept="image/*" className="hidden" onChange={escolherFoto} />
+          {ajustando && <AjustarFoto arquivo={ajustando} onPronto={fotoAjustada}
+            onCancelar={(motivo) => { setAjustando(null); if (motivo === 'ilegivel') toast.error('Não consegui ler essa imagem. Tente outra.'); }} />}
           <button type="button" className="btn btn-ghost" onClick={() => arquivo.current?.click()}>
             <Camera size={16} /> {piloto.tem_foto || foto ? 'Trocar foto' : 'Colocar foto'}
           </button>
