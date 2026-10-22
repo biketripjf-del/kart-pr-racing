@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Camera, Lock } from 'lucide-react';
+import { Camera, Lock, Sparkles } from 'lucide-react';
 import { api, getEu, setEu } from '../api.js';
 import { AdminLinks, useAdmin } from '../components/AdminApp.jsx';
 import { Casca, Avatar } from '../components/Marca.jsx';
 import AjustarFoto from '../components/AjustarFoto.jsx';
+import FotoPilotoIA, { podeFotoIA, FOCO_RETRATO_IA } from '../components/FotoPilotoIA.jsx';
 import * as M from '../mascaras.js';
 
 // ---------- /f/:token: o link pessoal. Guarda no celular e abre a ficha ----------
@@ -79,6 +80,8 @@ export function FichaForm() {
   const [f, setF] = useState(VAZIO);
   const [foto, setFoto] = useState(null);
   const [ajustando, setAjustando] = useState(null); // arquivo escolhido, esperando o ajuste
+  const [ia, setIa] = useState(false);
+  const [doIA, setDoIA] = useState(false); // o ajuste aberto é do retrato da IA (abre no rosto)
   const [aceite, setAceite] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const arquivo = useRef(null);
@@ -103,7 +106,7 @@ export function FichaForm() {
   function escolherFoto(e) {
     const a = e.target.files?.[0];
     e.target.value = '';
-    if (a) setAjustando(a);
+    if (a) { setDoIA(false); setAjustando(a); }
   }
   async function fotoAjustada(dataUrl) {
     setAjustando(null);
@@ -156,12 +159,19 @@ export function FichaForm() {
             ? <img src={foto} alt="" className="w-28 h-28 rounded-full object-cover" />
             : <Avatar id={piloto.id} v={piloto.foto_v} nome={piloto.nome} tam={112} />}
           <input ref={arquivo} type="file" accept="image/*" className="hidden" onChange={escolherFoto} />
-          {ajustando && <AjustarFoto arquivo={ajustando} onPronto={fotoAjustada}
+          {ajustando && <AjustarFoto arquivo={ajustando} foco={doIA ? FOCO_RETRATO_IA : undefined} onPronto={fotoAjustada}
             onCancelar={(motivo) => { setAjustando(null); if (motivo === 'ilegivel') toast.error('Não consegui ler essa imagem. Tente outra.'); }} />}
           <button type="button" className="btn btn-ghost" onClick={() => arquivo.current?.click()}>
             <Camera size={16} /> {piloto.tem_foto || foto ? 'Trocar foto' : 'Colocar foto'}
           </button>
           <div className="text-[11px] text-tx3 text-center">Foto de rosto, de frente. Aparece no quadro, no sorteio e no ranking.</div>
+          {podeFotoIA(piloto) && (
+            <button type="button" className="btn btn-gold" onClick={() => setIa(true)}>
+              <Sparkles size={16} /> {piloto.foto_ia.usada ? 'Ver minha foto de piloto (IA)' : 'Criar foto de piloto com IA'}
+            </button>
+          )}
+          {ia && <FotoPilotoIA eu={piloto} onFechar={() => setIa(false)}
+            onUsar={(blob) => { setIa(false); setDoIA(true); setAjustando(blob); setPiloto((p) => ({ ...p, foto_ia: { ...p.foto_ia, usada: true, tem_resultado: true } })); }} />}
         </div>
 
         <div className="card p-5 space-y-4">
