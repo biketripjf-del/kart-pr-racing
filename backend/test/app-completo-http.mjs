@@ -74,6 +74,8 @@ const tk3 = links.json.pilotos.find((p) => p.nome === 'Piloto 3').token;
 const X2 = { 'X-Piloto': tk2 };
 ok((await http('GET', '/api/ficha/eu', null, null, X2)).json.nome_evento === 'Piloto 2', 'o link do Piloto 2 abre a ficha DELE');
 ok((await http('POST', '/api/ficha/eu', { ...ficha, consentimento: false }, null, X2)).status === 400, 'ficha sem consentimento = 400');
+ok((await http('POST', '/api/ficha/eu/foto', { foto: ficha.foto }, null, X2)).status === 409, 'só a foto, antes de aceitar a ficha = 409 (sem consentimento não mostra rosto)');
+ok((await http('POST', '/api/ficha/eu/foto', { foto: ficha.foto })).status === 401, 'só a foto sem link pessoal = 401');
 ok((await http('POST', '/api/ficha/eu', { ...ficha, foto: 'data:text/html;base64,PHNjcmlwdD4=' }, null, X2)).status === 400, 'foto que não é imagem = 400');
 ok((await http('POST', '/api/ficha/eu', ficha, null, X2)).status === 200, 'preenche pela ficha do link');
 ok((await http('POST', '/api/ficha/eu', { ...ficha, apelido: 'Doisão', foto: undefined }, null, X2)).status === 200, 'edita de novo pelo mesmo link');
@@ -81,6 +83,12 @@ const minha = await http('GET', '/api/ficha/eu', null, null, X2);
 ok(minha.json.altura_cm === 178 && minha.json.data_nascimento === '1990-05-01' && minha.json.apelido === 'Doisão' && minha.json.tem_foto && !('foto' in minha.json),
   'a própria ficha volta inteira pra editar (sem o peso da foto) e a foto ficou');
 ok((await http('GET', '/api/ficha/eu', null, null, { 'X-Piloto': tk3 })).json.id !== idP2, 'o link de outro piloto não abre a ficha do Piloto 2');
+const fotoAntes = (await http('GET', '/api/ficha/eu', null, null, X2)).json.foto_em;
+ok((await http('POST', '/api/ficha/eu/foto', { foto: 'data:text/html;base64,PHNjcmlwdD4=' }, null, X2)).status === 400, 'só a foto: o que não é imagem = 400');
+await new Promise((r) => setTimeout(r, 15));
+ok((await http('POST', '/api/ficha/eu/foto', { foto: ficha.foto }, null, X2)).status === 200, 'só a foto, depois da ficha aceita = 200');
+const soFotoDepois = (await http('GET', '/api/ficha/eu', null, null, X2)).json;
+ok(soFotoDepois.tem_foto && soFotoDepois.foto_em !== fotoAntes && soFotoDepois.apelido === 'Doisão', 'só a foto troca a foto (versão nova) e não mexe no resto da ficha');
 const troca = await http('POST', `/api/ficha/admin/${idP2}/novo-link`, null, token);
 ok((await http('GET', '/api/ficha/eu', null, null, X2)).status === 401 && (await http('GET', '/api/ficha/eu', null, null, { 'X-Piloto': troca.json.token })).status === 200,
   'admin troca o link: o antigo morre na hora, o novo abre');

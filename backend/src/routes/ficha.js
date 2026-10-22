@@ -115,6 +115,19 @@ router.post('/eu', limite, ah(async (req, res) => {
   res.json({ ok: true, id: eu.id });
 }));
 
+// só a foto (22/10/2026, Brunner: "deixa a opção de mudar a foto ... logo qdo a pessoa loga") — o aviso da
+// entrada troca a foto sem reenviar a ficha inteira. Vale só pra quem já aceitou mostrar a foto (consentimento da ficha).
+const soFoto = Joi.object({ foto: Joi.string().max(FOTO_MAX).pattern(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/).required() });
+router.post('/eu/foto', limite, ah(async (req, res) => {
+  const eu = await pilotoDoToken(req);
+  if (!eu) return res.status(401).json({ erro: 'link_invalido' });
+  const { error, value: v } = soFoto.validate(req.body || {}, { stripUnknown: true });
+  if (error) return res.status(400).json({ erro: 'dados_invalidos', detalhe: error.message });
+  const { rowCount } = await q('UPDATE pilotos SET foto=$1, foto_em=now() WHERE id=$2 AND consentimento', [v.foto, eu.id]);
+  if (!rowCount) return res.status(409).json({ erro: 'preencha_a_ficha' });
+  res.json({ ok: true, id: eu.id });
+}));
+
 // admin: o link pessoal de cada piloto do evento (cria o que falta)
 router.get('/admin/links', exigirAdmin, ah(async (req, res) => {
   const doEvento = (await pilotosDoEvento()).filter((p) => p.piloto_id != null);
