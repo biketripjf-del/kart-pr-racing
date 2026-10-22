@@ -12,6 +12,7 @@ import { ah } from '../async.js';
 import crypto from 'crypto';
 import { normalizar } from '../aoVivo.js';
 import { exigirAdmin } from '../auth.js';
+import { CORES, fotoIAAtiva, gerarFotoPiloto } from '../fotoIA.js';
 
 const router = Router();
 export const EVENTO_ATUAL = () => process.env.EVENTO_ATUAL || 'copa-3';
@@ -77,10 +78,11 @@ router.get('/eu', limite, ah(async (req, res) => {
   if (!eu) return res.status(401).json({ erro: 'link_invalido' });
   const { rows } = await q(
     `SELECT id, nome, apelido, whatsapp, data_nascimento, peso_kg, altura_cm, cidade, instagram, emergencia_nome, emergencia_tel,
-            tipo_sanguineo, camiseta, experiencia, empresa, (ficha_em IS NOT NULL) AS tem_ficha, (foto IS NOT NULL) AS tem_foto, foto_em
+            tipo_sanguineo, camiseta, experiencia, empresa, (ficha_em IS NOT NULL) AS tem_ficha, (foto IS NOT NULL) AS tem_foto, foto_em,
+            (foto_ia_em IS NOT NULL) AS ia_usada, (foto_ia IS NOT NULL) AS ia_tem_resultado
      FROM pilotos WHERE id = $1`, [eu.id]
   );
-  const p = rows[0];
+  const { ia_usada, ia_tem_resultado, ...p } = rows[0];
   // nome de exibição = como ele está no evento atual
   const doEvento = (await pilotosDoEvento()).find((x) => x.piloto_id === p.id);
   res.set('Cache-Control', 'no-store');
@@ -88,6 +90,7 @@ router.get('/eu', limite, ah(async (req, res) => {
     ...p, nome_evento: doEvento?.nome || p.nome,
     data_nascimento: p.data_nascimento ? new Date(p.data_nascimento).toISOString().slice(0, 10) : '',
     foto_v: p.foto_em ? new Date(p.foto_em).getTime() : null,
+    foto_ia: { ativa: fotoIAAtiva(), usada: ia_usada, tem_resultado: ia_tem_resultado, cores: Object.entries(CORES).map(([id, c]) => ({ id, nome: c.nome })) },
   });
 }));
 
@@ -128,6 +131,47 @@ router.post('/eu/foto', limite, ah(async (req, res) => {
   res.json({ ok: true, id: eu.id });
 }));
 
+// foto de piloto por IA (22/10/2026, Brunner: "3 pro, maximo de 1 para cada") — a selfie vira retrato com macacão.
+// 1 por piloto: a vaga é reservada ANTES de chamar a IA (UPDATE atômico) e devolvida se a IA falhar, então dois
+// toques seguidos não geram duas. O resultado fica guardado: fechar o app antes de usar não queima a vez dele.
+const SELFIE_MAX = 900_000; // o celular reduz pra ~1024 px antes; o express aceita 1 MB
+const limiteIA = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { erro: 'muitas_tentativas' } });
+const pedidoIA = Joi.object({
+  selfie: Joi.string().max(SELFIE_MAX).pattern(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/).required(),
+  cor: Joi.string().valid(...Object.keys(CORES)).required(),
+});
+router.post('/eu/foto-ia', limiteIA, ah(async (req, res) => {
+  const eu = await pilotoDoToken(req);
+  if (!eu) return res.status(401).json({ erro: 'link_invalido' });
+  if (!fotoIAAtiva()) return res.status(503).json({ erro: 'ia_desligada' });
+  const { error, value: v } = pedidoIA.validate(req.body || {}, { stripUnknown: true });
+  if (error) return res.status(400).json({ erro: 'dados_invalidos', detalhe: error.message });
+  const { rows: [p] } = await q('SELECT consentimento, foto_ia_em FROM pilotos WHERE id=$1', [eu.id]);
+  if (!p.consentimento) return res.status(409).json({ erro: 'preencha_a_ficha' });
+  const { rowCount } = await q('UPDATE pilotos SET foto_ia_em=now() WHERE id=$1 AND foto_ia_em IS NULL', [eu.id]);
+  if (!rowCount) return res.status(409).json({ erro: 'ja_gerou' });
+  let imagem;
+  try {
+    imagem = await gerarFotoPiloto(v.selfie, v.cor);
+  } catch (e) {
+    await q('UPDATE pilotos SET foto_ia_em=NULL WHERE id=$1', [eu.id]);
+    console.error(`foto-ia piloto ${eu.id}: ${e.message}`);
+    return res.status(502).json({ erro: e.codigo || 'ia_fora' });
+  }
+  await q('UPDATE pilotos SET foto_ia=$1 WHERE id=$2', [imagem, eu.id]);
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, imagem });
+}));
+// o retrato já gerado (quem fechou o app antes de usar)
+router.get('/eu/foto-ia', limite, ah(async (req, res) => {
+  const eu = await pilotoDoToken(req);
+  if (!eu) return res.status(401).json({ erro: 'link_invalido' });
+  const { rows: [p] } = await q('SELECT foto_ia FROM pilotos WHERE id=$1', [eu.id]);
+  if (!p.foto_ia) return res.status(404).json({ erro: 'sem_foto_ia' });
+  res.set('Cache-Control', 'no-store');
+  res.json({ imagem: p.foto_ia });
+}));
+
 // admin: o link pessoal de cada piloto do evento (cria o que falta)
 router.get('/admin/links', exigirAdmin, ah(async (req, res) => {
   const doEvento = (await pilotosDoEvento()).filter((p) => p.piloto_id != null);
@@ -155,6 +199,13 @@ router.post('/admin/:id/novo-link', exigirAdmin, ah(async (req, res) => {
   const { rowCount } = await q('UPDATE pilotos SET ficha_token = $2 WHERE id = $1', [Number(req.params.id), t]);
   if (!rowCount) return res.status(404).json({ erro: 'nao_encontrado' });
   res.json({ ok: true, token: t });
+}));
+
+// admin: devolve a vez da foto por IA (o piloto que pedir pra tentar de novo — decisão do admin, 1 a 1)
+router.post('/admin/:id/foto-ia/liberar', exigirAdmin, ah(async (req, res) => {
+  const { rowCount } = await q('UPDATE pilotos SET foto_ia_em=NULL, foto_ia=NULL WHERE id=$1', [Number(req.params.id)]);
+  if (!rowCount) return res.status(404).json({ erro: 'nao_encontrado' });
+  res.json({ ok: true });
 }));
 
 export default router;

@@ -6,10 +6,11 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Camera } from 'lucide-react';
+import { Camera, Sparkles } from 'lucide-react';
 import { api, getEu } from '../api.js';
 import { Avatar } from './Marca.jsx';
 import AjustarFoto from './AjustarFoto.jsx';
+import FotoPilotoIA, { podeFotoIA, FOCO_RETRATO_IA } from './FotoPilotoIA.jsx';
 
 const ADIADO_KEY = 'prcup_foto_adiada';
 const ADIA_MS = 12 * 3600 * 1000;
@@ -22,7 +23,9 @@ export default function LembreteFoto() {
   const nav = useNavigate();
   const [eu, setEu] = useState(null);
   const [ajustando, setAjustando] = useState(null);
+  const [doIA, setDoIA] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [ia, setIa] = useState(false);
   const arquivo = useRef(null);
   const fora = FORA(pathname);
 
@@ -54,13 +57,19 @@ export default function LembreteFoto() {
         <div className="font-semibold text-lg">Coloque sua foto de piloto</div>
         <div className="text-sm text-tx2">Você ainda está só com as iniciais. A foto aparece no ranking, nas baterias, no sorteio e nas caronas.</div>
         <input ref={arquivo} type="file" accept="image/*" className="hidden"
-          onChange={(e) => { const a = e.target.files?.[0]; e.target.value = ''; if (a) setAjustando(a); }} />
+          onChange={(e) => { const a = e.target.files?.[0]; e.target.value = ''; if (a) { setDoIA(false); setAjustando(a); } }} />
         <button type="button" className="btn btn-primary w-full" disabled={salvando} onClick={() => arquivo.current?.click()}>
           <Camera size={16} /> {salvando ? 'Salvando…' : 'Escolher foto'}
         </button>
+        {podeFotoIA(eu) && (
+          <button type="button" className="btn btn-gold w-full" disabled={salvando} onClick={() => setIa(true)}>
+            <Sparkles size={16} /> {eu.foto_ia.usada ? 'Ver minha foto de piloto (IA)' : 'Criar foto de piloto com IA'}
+          </button>
+        )}
         <button type="button" className="btn btn-ghost w-full" onClick={fechar}>Agora não</button>
       </div>
-      {ajustando && <AjustarFoto arquivo={ajustando} onPronto={salvar}
+      {ia && <FotoPilotoIA eu={eu} onFechar={() => setIa(false)} onUsar={(blob) => { setIa(false); setDoIA(true); setAjustando(blob); }} />}
+      {ajustando && <AjustarFoto arquivo={ajustando} foco={doIA ? FOCO_RETRATO_IA : undefined} onPronto={salvar}
         onCancelar={(motivo) => { setAjustando(null); if (motivo === 'ilegivel') toast.error('Não consegui ler essa imagem. Tente outra.'); }} />}
     </div>,
     document.body

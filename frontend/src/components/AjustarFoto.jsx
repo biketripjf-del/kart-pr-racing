@@ -12,7 +12,8 @@ const LADO = 512;    // foto salva (512 px, jpeg) — ~60 KB em vez de 4 MB
 const ZOOM_MAX = 4;
 const FUNDO = '#e8eff7';
 
-export default function AjustarFoto({ arquivo, onPronto, onCancelar }) {
+// foco (opcional): { z, y } = zoom inicial e ponto da foto (fração da altura, de cima) que abre no centro do círculo
+export default function AjustarFoto({ arquivo, onPronto, onCancelar, foco }) {
   const [[PALCO, MOLDURA]] = useState(tamanhos);
   const [img, setImg] = useState(null);
   const [z, setZ] = useState(1);              // 1 = a foto cobre o círculo
@@ -25,7 +26,10 @@ export default function AjustarFoto({ arquivo, onPronto, onCancelar }) {
     const i = new Image();
     i.onload = () => {
       // foto em pé (corpo inteiro, selfie): começa mostrando a parte de CIMA, onde costuma estar o rosto
-      if (i.height > i.width) setPos({ x: 0, y: ((i.height * MOLDURA) / i.width - MOLDURA) / 2 * 0.7 });
+      if (foco) {
+        const alt = (i.height * MOLDURA * foco.z) / Math.min(i.width, i.height);
+        setZ(foco.z); setPos({ x: 0, y: Math.min(alt * (0.5 - foco.y), (alt - MOLDURA) / 2) });
+      } else if (i.height > i.width) setPos({ x: 0, y: ((i.height * MOLDURA) / i.width - MOLDURA) / 2 * 0.7 });
       setImg(i);
     };
     i.onerror = () => onCancelar('ilegivel');

@@ -89,6 +89,42 @@ await new Promise((r) => setTimeout(r, 15));
 ok((await http('POST', '/api/ficha/eu/foto', { foto: ficha.foto }, null, X2)).status === 200, 'só a foto, depois da ficha aceita = 200');
 const soFotoDepois = (await http('GET', '/api/ficha/eu', null, null, X2)).json;
 ok(soFotoDepois.tem_foto && soFotoDepois.foto_em !== fotoAntes && soFotoDepois.apelido === 'Doisão', 'só a foto troca a foto (versão nova) e não mexe no resto da ficha');
+// ---------- foto de piloto por IA (1 por piloto; o Google é dublê aqui — a chamada real foi provada à mão em 22/10) ----------
+const selfie = 'data:image/jpeg;base64,' + Buffer.from('ffd8ffe0', 'hex').toString('base64');
+const fetchReal = globalThis.fetch;
+let respostaIA = 'ok'; let chamadasIA = 0; let corpoIA = null;
+globalThis.fetch = async (url, opts) => {
+  if (!String(url).includes('generativelanguage.googleapis.com')) return fetchReal(url, opts);
+  chamadasIA++; corpoIA = JSON.parse(opts.body);
+  if (respostaIA === 'erro') return new Response('{"error":{"code":500}}', { status: 500 });
+  return Response.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: 'UkVUUkFUTw==' } }] } }] });
+};
+delete process.env.GEMINI_API_KEY;
+ok((await http('GET', '/api/ficha/eu', null, null, X2)).json.foto_ia.ativa === false, 'foto IA: sem chave no servidor, a tela nem mostra o botão');
+ok((await http('POST', '/api/ficha/eu/foto-ia', { selfie, cor: 'azul' }, null, X2)).status === 503, 'foto IA: sem chave = 503');
+process.env.GEMINI_API_KEY = 'chave-de-teste';
+const ia0 = (await http('GET', '/api/ficha/eu', null, null, X2)).json.foto_ia;
+ok(ia0.ativa && !ia0.usada && ia0.cores[0].id === 'azul' && ia0.cores.length === 6, 'foto IA: ligada, vez livre, 6 cores com a da P&R primeiro');
+ok((await http('POST', '/api/ficha/eu/foto-ia', { selfie, cor: 'azul' })).status === 401, 'foto IA sem link pessoal = 401');
+ok((await http('POST', '/api/ficha/eu/foto-ia', { selfie, cor: 'rosa-choque' }, null, X2)).status === 400, 'foto IA: cor fora da lista = 400');
+ok((await http('POST', '/api/ficha/eu/foto-ia', { selfie, cor: 'azul' }, null, { 'X-Piloto': tk3 })).status === 409, 'foto IA: quem não aceitou a ficha = 409 (sem consentimento não manda rosto pra IA)');
+respostaIA = 'erro';
+const falhou = await http('POST', '/api/ficha/eu/foto-ia', { selfie, cor: 'azul' }, null, X2);
+ok(falhou.status === 502 && !(await http('GET', '/api/ficha/eu', null, null, X2)).json.foto_ia.usada, 'foto IA: a IA falhou = 502 e a vez VOLTA pro piloto');
+respostaIA = 'ok';
+const gerou = await http('POST', '/api/ficha/eu/foto-ia', { selfie, cor: 'laranja' }, null, X2);
+ok(gerou.status === 200 && gerou.json.imagem === 'data:image/png;base64,UkVUUkFUTw==', 'foto IA: gera e devolve o retrato');
+ok(corpoIA.contents[0].parts.length === 3 && corpoIA.contents[0].parts[0].inline_data.data === selfie.split(',')[1] && corpoIA.contents[0].parts[2].text.includes('orange and black'),
+  'foto IA: manda selfie + macacão de referência + a cor escolhida');
+const antes = chamadasIA;
+ok((await http('POST', '/api/ficha/eu/foto-ia', { selfie, cor: 'azul' }, null, X2)).json.erro === 'ja_gerou' && chamadasIA === antes, 'foto IA: a 2ª tentativa = 409 ja_gerou, sem gastar chamada');
+const ia1 = (await http('GET', '/api/ficha/eu', null, null, X2)).json.foto_ia;
+ok(ia1.usada && ia1.tem_resultado && (await http('GET', '/api/ficha/eu/foto-ia', null, null, X2)).json.imagem === gerou.json.imagem, 'foto IA: o retrato fica guardado (fechar o app não queima a vez)');
+ok((await http('GET', '/api/ficha/eu', null, null, X2)).json.tem_foto && soFotoDepois.foto_v === (await http('GET', '/api/ficha/eu', null, null, X2)).json.foto_v, 'foto IA: gerar NÃO troca a foto do perfil sozinho (o piloto escolhe usar)');
+ok((await http('POST', `/api/ficha/admin/${idP2}/foto-ia/liberar`, null)).status === 401, 'liberar a vez sem login de admin = 401');
+ok((await http('POST', `/api/ficha/admin/${idP2}/foto-ia/liberar`, null, token)).status === 200
+  && (await http('POST', '/api/ficha/eu/foto-ia', { selfie, cor: 'verde' }, null, X2)).status === 200, 'admin libera a vez e o piloto gera de novo');
+globalThis.fetch = fetchReal;
 const troca = await http('POST', `/api/ficha/admin/${idP2}/novo-link`, null, token);
 ok((await http('GET', '/api/ficha/eu', null, null, X2)).status === 401 && (await http('GET', '/api/ficha/eu', null, null, { 'X-Piloto': troca.json.token })).status === 200,
   'admin troca o link: o antigo morre na hora, o novo abre');
