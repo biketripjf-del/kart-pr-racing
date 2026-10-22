@@ -101,6 +101,8 @@ function Grid({ s, titulo }) {
 }
 
 const pct = (n) => `${n.toFixed(2).replace('.', ',')}%`;
+// ritmo em segundos atrás do mais rápido, na volta de referência do traçado do dia (o recorde); sem traçado, fica em %
+const atras = (ritmo, ref) => (ref ? `+${((ritmo / 100 - 1) * ref / 1000).toFixed(2).replace('.', ',')} s` : pct(ritmo));
 
 // antes da tomada: quem corre a bateria, do mais rápido ao mais lento pelo histórico (rota /escalacao, 22/10)
 function Escalacao({ e, recorde }) {
@@ -109,7 +111,7 @@ function Escalacao({ e, recorde }) {
       {(e.forca != null || e.estreantes > 0) && (
         <div className="px-4 pb-2 text-[12px] text-tx2">
           {e.da_morte && <b className="text-[color:var(--color-gold)] tracking-wide">BATERIA DA MORTE · </b>}
-          {e.forca != null ? <>força {pct(e.forca)}{e.forca_pos ? ` · ${e.forca_pos}ª mais forte` : ''}</> : 'força: poucos com volta registrada'}
+          {e.forca != null ? <>força {atras(e.forca, recorde?.mv_ms)}{e.forca_pos ? ` · ${e.forca_pos}ª mais forte` : ''}</> : 'força: poucos com volta registrada'}
           {e.estreantes > 0 && <> · {e.estreantes} estreante{e.estreantes > 1 ? 's' : ''}</>}
         </div>
       )}
@@ -127,7 +129,7 @@ function Escalacao({ e, recorde }) {
               </div>
             </div>
             <div className="text-right tabular-nums">
-              <div className="text-sm">{p.ritmo != null ? pct(p.ritmo) : '—'}</div>
+              <div className="text-sm">{p.ritmo != null ? atras(p.ritmo, recorde?.mv_ms) : '—'}</div>
               <div className="text-[11px] text-tx3">{p.pontos ? `${p.pontos} pts` : ''}</div>
             </div>
           </li>
@@ -206,7 +208,7 @@ function Baterias({ q, slug }) {
       <div className="card mt-4 p-4 text-[12px] text-tx2 space-y-2">
         <p>4 blocos de 7. Cada bateria junta 2 blocos, e cada piloto corre 2 baterias contra 20 rivais diferentes.
           Pontos como na F1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · do 10º ao 14º 1; perdeu a bateria = 0.</p>
-        {esc?.sorteado && <p>Antes da corrida, a lista vem do mais rápido ao mais lento. O % é o ritmo: a melhor volta de cada um comparada com a mais rápida da corrida, na média das corridas anteriores (100% = o mais rápido). Força = média dos 5 mais rápidos da bateria; menor = mais forte.</p>}
+        {esc?.sorteado && <p>Antes da corrida, a lista vem do mais rápido ao mais lento. O número é quanto a melhor volta de cada um fica, em média, atrás da volta mais rápida de cada corrida que já fez, convertido pra uma volta do traçado de amanhã{esc.recorde ? ` (${volta(esc.recorde.mv_ms)}, o recorde)` : ''}. +0,00 s = sempre o mais rápido. Força = média dos 5 mais rápidos da bateria; quanto menor, mais forte.</p>}
       </div>
       {baterias.map((s) => <Corrida key={s.codigo} s={s} esc={daBateria(s.codigo)} recorde={esc?.recorde} />)}
     </>
