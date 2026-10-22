@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import LembreteFoto from './components/LembreteFoto.jsx';
 import './index.css';
 
 import Inicio from './pages/Inicio.jsx';
@@ -44,6 +45,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <Toaster position="top-center" richColors />
+      <LembreteFoto />
       <Routes>
         <Route path="/" element={<Inicio />} />
         <Route path="/ficha" element={<FichaForm />} />
