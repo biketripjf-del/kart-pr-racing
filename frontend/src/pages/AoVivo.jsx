@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Trophy, Timer, RefreshCw, Flag, AlertTriangle } from 'lucide-react';
 import { api } from '../api.js';
-import { Casca, dataBR } from '../components/Marca.jsx';
+import { Casca, Avatar, dataBR } from '../components/Marca.jsx';
 
 const INTERVALO_MS = 15000;
 const ROTULO = {
@@ -100,26 +100,63 @@ function Grid({ s, titulo }) {
   );
 }
 
-// antes da tomada: quem corre a bateria, bloco a bloco (sai do sorteio)
-function Escalados({ s, blocos }) {
-  const cols = (s.blocos || []).filter((b) => blocos?.[b]?.pilotos.length);
-  if (!cols.length) return null;
+const pct = (n) => `${n.toFixed(2).replace('.', ',')}%`;
+
+// antes da tomada: quem corre a bateria, do mais rápido ao mais lento pelo histórico (rota /escalacao, 22/10)
+function Escalacao({ e, recorde }) {
   return (
-    <div className="px-4 pb-3 grid grid-cols-2 gap-x-4 text-sm">
-      {cols.map((b) => (
-        <div key={b}>
-          <div className="label mt-1">Bloco {b}</div>
-          {[...blocos[b].pilotos].sort((x, y) => x.localeCompare(y, 'pt-BR')).map((p) => <div key={p} className="py-0.5">{p}</div>)}
+    <div className="pb-2">
+      {(e.forca != null || e.estreantes > 0) && (
+        <div className="px-4 pb-2 text-[12px] text-tx2">
+          {e.da_morte && <b className="text-[color:var(--color-gold)] tracking-wide">BATERIA DA MORTE · </b>}
+          {e.forca != null ? <>força {pct(e.forca)}{e.forca_pos ? ` · ${e.forca_pos}ª mais forte` : ''}</> : 'força: poucos com volta registrada'}
+          {e.estreantes > 0 && <> · {e.estreantes} estreante{e.estreantes > 1 ? 's' : ''}</>}
         </div>
-      ))}
+      )}
+      <ul>
+        {e.pilotos.map((p) => (
+          <li key={p.piloto} className="flex items-center gap-3 px-4 py-1.5 border-t border-[#eef2f7]">
+            <span className={`w-4 text-right text-[12px] tabular-nums ${p.destaque ? 'font-bold text-[color:var(--color-gold)]' : 'text-tx3'}`}>{p.destaque || ''}</span>
+            <Avatar id={p.piloto_id} v={p.foto_v} nome={p.piloto} tam={32} />
+            <div className="flex-1 min-w-0">
+              <div className={`truncate text-sm ${p.destaque ? 'font-semibold' : ''}`}>{p.piloto}</div>
+              <div className="text-[11px] text-tx3 truncate">
+                bloco {p.grupo}
+                {p.estreante ? ' · estreante' : ` · ${p.corridas} corrida${p.corridas > 1 ? 's' : ''}`}
+                {p.pos_copa && p.pos_copa <= 5 && p.pontos > 0 && <span className="text-[color:var(--color-brand)] font-semibold"> · {p.pos_copa}º na Copa</span>}
+              </div>
+            </div>
+            <div className="text-right tabular-nums">
+              <div className="text-sm">{p.ritmo != null ? pct(p.ritmo) : '—'}</div>
+              <div className="text-[11px] text-tx3">{p.pontos ? `${p.pontos} pts` : ''}</div>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {(e.duelos.length > 0 || e.mais_perto_do_recorde) && (
+        <div className="mx-4 mt-2 pt-2 border-t border-[#e3e9f1] text-[12px] text-tx2 space-y-1">
+          {e.duelos.length > 0 && (
+            <div>
+              <span className="label mb-0 mr-1">Duelos</span>
+              {e.duelos.map((d) => `${d.a} ${d.a_vence} x ${d.b_vence} ${d.b}`).join(' · ')}
+            </div>
+          )}
+          {e.mais_perto_do_recorde && recorde && (
+            <div>
+              <span className="label mb-0 mr-1">Recorde à vista</span>
+              {e.mais_perto_do_recorde.piloto} já fez {volta(e.mais_perto_do_recorde.mv_ms)}; o recorde é {volta(recorde.mv_ms)} ({recorde.piloto})
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function Corrida({ s, blocos }) {
+function Corrida({ s, esc, recorde }) {
   const corpo = s.resultado.length ? <Resultado s={s} comPontos />
     : s.grid?.length ? <Grid s={s} titulo="Grid de largada · tomada de tempo" />
-    : s.blocos?.length && blocos ? <Escalados s={s} blocos={blocos} /> : null;
+    : esc ? <Escalacao e={esc} recorde={recorde} /> : null;
   return (
     <CartaoSessao s={s} vazio="Grid sai da tomada de tempo (melhor volta larga em 1º).">
       {corpo}
@@ -155,19 +192,23 @@ function Placar({ tabela, corte, titulo, nota, comGrupo }) {
   );
 }
 
-// as 4 baterias, cada uma com 2 blocos de 7 (W+X, Y+Z, W+Y, X+Z)
-function Baterias({ q }) {
+// as 4 baterias, cada uma com 2 blocos de 7 (W+X, Y+Z, W+Y, X+Z); antes da tomada, a escalação com o histórico
+function Baterias({ q, slug }) {
+  const [esc, setEsc] = useState(null);
+  useEffect(() => { api.get(`/ao-vivo/${slug}/escalacao`).then((r) => setEsc(r.data)).catch(() => setEsc(null)); }, [slug]);
   const baterias = Object.values(q.sessoes).filter((s) => s.tipo === 'bateria');
   if (!Object.values(q.blocos).some((b) => b.pilotos.length)) {
     return <div className="card p-6 text-center text-tx mt-4">Os blocos saem do sorteio.</div>;
   }
+  const daBateria = (c) => esc?.baterias?.find((b) => b.codigo === c);
   return (
     <>
-      <div className="card mt-4 p-4 text-[12px] text-tx2">
-        4 blocos de 7. Cada bateria junta 2 blocos, e cada piloto corre 2 baterias contra 20 rivais diferentes.
-        Pontos como na F1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · do 10º ao 14º 1; perdeu a bateria = 0.
+      <div className="card mt-4 p-4 text-[12px] text-tx2 space-y-2">
+        <p>4 blocos de 7. Cada bateria junta 2 blocos, e cada piloto corre 2 baterias contra 20 rivais diferentes.
+          Pontos como na F1: 1º 25 · 2º 18 · 3º 15 · 4º 12 · 5º 10 · 6º 8 · 7º 6 · 8º 4 · 9º 2 · do 10º ao 14º 1; perdeu a bateria = 0.</p>
+        {esc?.sorteado && <p>Antes da corrida, a lista vem do mais rápido ao mais lento. O % é o ritmo: a melhor volta de cada um comparada com a mais rápida da corrida, na média das corridas anteriores (100% = o mais rápido). Força = média dos 5 mais rápidos da bateria; menor = mais forte.</p>}
       </div>
-      {baterias.map((s) => <Corrida key={s.codigo} s={s} blocos={q.blocos} />)}
+      {baterias.map((s) => <Corrida key={s.codigo} s={s} esc={daBateria(s.codigo)} recorde={esc?.recorde} />)}
     </>
   );
 }
@@ -333,7 +374,7 @@ export default function AoVivo() {
         ))}
       </div>
       {atual === 'D' && <Dia dados={dados} />}
-      {atual === 'B' && <Baterias q={q} />}
+      {atual === 'B' && <Baterias q={q} slug={slug} />}
       {atual === 'G' && <Geral q={q} />}
       {atual === 'F' && <Final q={q} />}
     </Casca>
