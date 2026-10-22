@@ -128,6 +128,7 @@ export default function FotoPilotoIA({ eu, onUsar, onFechar }) {
             <div className="text-sm text-tx2 min-w-0">Macacão <b className="text-tx">{corAtual?.nome}</b>.<br />A IA leva uns 30 segundos.</div>
           </div>
           <div className="text-[12px] text-tx3">É <b>1 foto por piloto</b>: confira a selfie e a cor antes de gerar.</div>
+          <div className="text-[11px] text-tx3">Ao gerar, sua selfie vai para a IA do Google só pra criar esta foto. O app guarda apenas o resultado.</div>
           <button type="button" className="btn btn-primary w-full" onClick={gerar}><Sparkles size={16} /> Gerar minha foto de piloto</button>
           <button type="button" className="btn btn-ghost w-full" onClick={() => setEtapa('cor')}>Trocar cor ou selfie</button>
         </>)}
