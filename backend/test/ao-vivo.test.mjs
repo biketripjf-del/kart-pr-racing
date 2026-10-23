@@ -178,3 +178,16 @@ test('validação barra piloto fora da lista, repetido e posição dupla', () =>
   assert.ok(e.some((x) => x.includes('posição repetida')));
   assert.ok(e.some((x) => x.includes('ilegível')));
 });
+
+test('desistencia da final: o piloto sai do corte dos 14 e o proximo da classificacao entra', () => {
+  const comDesistencia = pilotos.map((p) => (p.nome === 'Y1' ? { ...p, desistiu_final: true } : p));
+  const q = calcularQuadro({ pilotos: comDesistencia, sessoes: diaCompleto() });
+  const g = q.geral.tabela;
+  const naFinal = g.filter((l) => l.vai_pra_final).map((l) => l.piloto);
+  assert.equal(naFinal.length, 14, 'segue com 14 na final');
+  assert.ok(!naFinal.includes('Y1'), 'Y1 desistiu: fora da final');
+  assert.ok(naFinal.includes('Y7'), 'Y7 (15o por pontos) assume a vaga');
+  assert.equal(g.find((l) => l.piloto === 'Y1').pos, 1, 'Y1 mantem os pontos: segue lider da geral');
+  assert.equal(g.find((l) => l.piloto === 'Y1').vai_pra_final, false);
+  assert.ok(q.avisos.some((a) => /Desist/i.test(a) && a.includes('Y1')));
+});

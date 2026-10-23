@@ -187,7 +187,7 @@ export function calcularQuadro(estado) {
     const r2 = g && out.sessoes[bateriaDoBloco(g, 2).codigo].resultado.find((l) => l.piloto === nome);
     const bat = (r) => (r ? { pos: r.ausente ? null : r.pos_oficial, pontos: r.pontos, ausente: !!r.ausente } : null);
     return {
-      piloto: nome, grupo: g, cabeca: p.cabeca || null,
+      piloto: nome, grupo: g, cabeca: p.cabeca || null, desistiu_final: !!p.desistiu_final,
       b1: bat(r1), b2: bat(r2),
       b1_codigo: g ? bateriaDoBloco(g, 1).codigo : null, b2_codigo: g ? bateriaDoBloco(g, 2).codigo : null,
       correu: !!(r1 || r2),
@@ -207,7 +207,14 @@ export function calcularQuadro(estado) {
   const baterias = BATERIAS.map((d) => out.sessoes[d.codigo]);
   const algumaCorreu = baterias.some((s) => s.resultado.length);
   const definido = baterias.every((s) => s.status === 'homologado');
-  for (const l of geral) l.vai_pra_final = algumaCorreu && l.correu && l.pos <= VAGAS_FINAL;
+  let vagasFinalPreenchidas = 0;
+  for (const l of geral) {
+    l.vai_pra_final = algumaCorreu && l.correu && !l.desistiu_final && vagasFinalPreenchidas < VAGAS_FINAL;
+    if (l.vai_pra_final) vagasFinalPreenchidas += 1;
+  }
+  const desistentesNaFaixa = geral.filter((l) => l.desistiu_final && l.correu && l.pos <= VAGAS_FINAL).map((l) => l.piloto);
+  if (desistentesNaFaixa.length) out.avisos.push(`Desistencia da final: ${desistentesNaFaixa.join(
+)} — vaga para o proximo da classificacao.`);
   if (geral[VAGAS_FINAL - 1]?.empate_sorteio && geral[VAGAS_FINAL]?.empate_sorteio) {
     out.avisos.push('Empate EXATO na 14ª vaga da final (pontos e melhor volta) — sorteio.');
   }
