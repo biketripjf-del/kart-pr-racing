@@ -111,7 +111,7 @@ export function classificacaoDoEvento({ slug, estado }) {
   }
 
   const q = calcularQuadro(estado);
-  const final = q.final.classificacao;
+  const final = q.final.campeonato; // campeao por MAIOR soma do dia (baterias + final) — regra 24/10/2026
   const naFinal = new Set(final.map((l) => l.piloto));
   const resto = q.geral.tabela.filter((l) => l.correu && !naFinal.has(l.piloto));
   const linhas = [
@@ -123,7 +123,7 @@ export function classificacaoDoEvento({ slug, estado }) {
   return {
     slug, titulo: estado.titulo, data: estado.data, formato: 'copa3', completa, linhas,
     campeao: q.final.campeao,
-    criterio: completa ? 'final decide o pódio; depois da final, a soma das baterias'
+    criterio: completa ? 'campeao e podio pela maior soma do dia (baterias + final); resto pela soma das baterias'
       : linhas.length ? 'parcial: o evento ainda não terminou' : 'ainda não correu',
   };
 }
