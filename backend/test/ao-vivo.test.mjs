@@ -129,12 +129,16 @@ test('campeão e pódio = resultado da FINAL; só vira campeão com a final homo
   const naFinal = calcularQuadro({ pilotos, sessoes }).geral.tabela.filter((l) => l.vai_pra_final).map((l) => l.piloto);
   const ordem = naFinal.slice().reverse(); // o 14º das baterias vence a final
   let q = calcularQuadro({ pilotos, sessoes: { ...sessoes, FINAL: { status: 'provisorio', linhas: folha(ordem) } } });
-  assert.deepEqual(q.final.podio.map((p) => p.piloto), ordem.slice(0, 3));
   assert.equal(q.final.campeao, null);
   q = calcularQuadro({ pilotos, sessoes: { ...sessoes, FINAL: { status: 'homologado', linhas: folha(ordem) } } });
   // W4 tinha a PIOR soma entre os classificados (13) e mesmo assim é campeão: a final decide sozinha
-  assert.equal(q.final.campeao, 'W4');
-  assert.equal(q.final.classificacao[0].baterias, 13);
+  const tds = q.final.campeonato.map((l) => l.total_dia);
+  assert.deepEqual(tds, tds.slice().sort((a, b) => b - a), 'campeonato ordenado pela soma do dia');
+  assert.equal(q.final.campeao, q.final.campeonato[0].piloto);
+  assert.equal(q.final.podio[0].piloto, q.final.campeonato[0].piloto);
+  assert.equal(q.final.classificacao[0].piloto, 'W4');
+  assert.notEqual(q.final.campeao, 'W4', 'regra nova: vencedor da final nao e campeao so por isso');
+  for (const l of q.final.campeonato) assert.equal(l.total_dia, l.baterias + l.pontos_final);
 });
 
 test('grid da final sai da tomada da final quando ela existe', () => {

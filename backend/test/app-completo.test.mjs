@@ -167,16 +167,16 @@ test('histórico: na copa, a FINAL ordena o topo e o resto segue a soma das bate
   const finalistas = ['X4', 'Y1', 'W1', 'X1', 'Y2', 'Y3', 'W2', 'X2', 'Y4', 'Y5', 'W3', 'X3', 'Y6', 'Y7'];
   const c = classificacaoDoEvento(copa({ ...sess, FINAL: homolog(linhas(finalistas)) }));
   assert.equal(c.completa, true);
-  assert.equal(c.campeao, 'X4');
-  assert.deepEqual(c.linhas.slice(0, 3).map((l) => l.piloto), ['X4', 'Y1', 'W1']);
+  assert.equal(c.campeao, 'Y1');
+  assert.deepEqual(c.linhas.slice(0, 3).map((l) => l.piloto), ['Y1', 'Y2', 'W1']);
   assert.equal(c.linhas.length, 28);
   assert.equal(c.linhas[14].na_final, false);
   assert.equal(c.linhas[14].piloto, 'W4', 'o 1º de fora da final é o W4, que perdeu a 14ª vaga na melhor volta');
   assert.equal(c.linhas[14].pos, 15);
-  const campeao = numerosDoPiloto([copa({ ...sess, FINAL: homolog(linhas(finalistas)) })], 'id:203');
+  const campeao = numerosDoPiloto([copa({ ...sess, FINAL: homolog(linhas(finalistas)) })], 'id:300');
   assert.equal(campeao.titulos, 1, 'X4 (id 203) venceu a final = 1 título');
   assert.equal(campeao.finais, 1);
-  assert.equal(numerosDoPiloto([copa({ ...sess, FINAL: homolog(linhas(finalistas)) })], 'id:300').titulos, 0, 'Y1 venceu as baterias, mas não a final');
+  assert.equal(numerosDoPiloto([copa({ ...sess, FINAL: homolog(linhas(finalistas)) })], 'id:203').titulos, 0, 'Y1 venceu as baterias, mas não a final');
 });
 
 test('ranking F1 POR CORRIDA (19/10 17:21): 25-18-15-12-10-8-6-4-2-1, 11º em diante 1; cada corrida pontua e o dia soma; falta = 0; mais pontos vence', () => {

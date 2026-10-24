@@ -227,19 +227,28 @@ export function calcularQuadro(estado) {
   const gridTomada = gridDaTomada((sessoes.FINAL || {}).tomada, nomesFinal, atrasados);
   fin.grid = gridTomada || (nomesFinal.length ? nomesFinal : null);
   const correuFinal = fin.resultado.length > 0;
-  const classificacao = fin.resultado.map((l) => ({
-    pos: l.pos_oficial, piloto: l.piloto,
-    grupo: classificados.find((c) => c.piloto === l.piloto)?.grupo || null,
-    baterias: classificados.find((c) => c.piloto === l.piloto)?.total ?? null,
-  }));
+  const classificacao = fin.resultado.map((l) => {
+    const c = classificados.find((x) => x.piloto === l.piloto);
+    const pontos_final = l.ausente ? 0 : pontosDaPosicao(l.pos_oficial);
+    const baterias = c?.total ?? 0;
+    return { pos: l.pos_oficial, piloto: l.piloto, grupo: c?.grupo || null,
+      baterias, pontos_final, total_dia: baterias + pontos_final, mv_baterias_ms: c?.mv_baterias_ms ?? null };
+  });
+  // Campeao = MAIOR soma de pontos do dia: baterias + final (Brunner 24/10/2026, mudou a regra: a
+  // final deixou de decidir sozinha e virou mais uma corrida que da pontos F1). Empate: melhor posicao
+  // na final, depois melhor volta das baterias.
+  const campeonato = classificacao.slice().sort((a, b) =>
+    b.total_dia - a.total_dia || a.pos - b.pos || (a.mv_baterias_ms ?? Infinity) - (b.mv_baterias_ms ?? Infinity))
+    .map((l, i) => ({ pos: i + 1, piloto: l.piloto, total_dia: l.total_dia, baterias: l.baterias, pontos_final: l.pontos_final }));
   out.final = {
     grid: (fin.grid || []).map((p, i) => ({ largada: i + 1, piloto: p, grupo: classificados.find((l) => l.piloto === p)?.grupo || null,
       total: classificados.find((l) => l.piloto === p)?.total ?? null })),
     grid_pela_tomada: !!gridTomada,
     definido,
     classificacao,
-    podio: classificacao.slice(0, 3).map((l) => ({ pos: l.pos, piloto: l.piloto })),
-    campeao: fin.status === 'homologado' && correuFinal ? classificacao[0]?.piloto || null : null,
+    campeonato,
+    podio: campeonato.slice(0, 3).map((l) => ({ pos: l.pos, piloto: l.piloto, total_dia: l.total_dia })),
+    campeao: fin.status === 'homologado' && correuFinal ? campeonato[0]?.piloto || null : null,
   };
 
   const melhor = voltasDoDia.slice().sort((a, b) => a.mv_ms - b.mv_ms)[0];
